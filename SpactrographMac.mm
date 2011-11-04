@@ -403,6 +403,52 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 	return status;
 }
 
+#if 0 // ivan - old SpectroGraph code copied from the main cpp
+      // should eventually be in ActivateVisual or whatever
+/*
+ * Apple says:
+ Sent when iTunes is going to show the visual plugin in a port.  At
+ this point, the plugin should allocate any large buffers it needs.
+ * I say:
+ This message is called when the plugin is 'activated', i.e. when
+ the iTunes visualizer is enabled and this plugin is selected. This
+ is where you need to do all initializations you didn't do before.
+ */
+case kVisualPluginShowWindowMessage:
+{
+    
+    initOpenGL();
+    
+    visualPluginData->destOptions = messageInfo->u.showWindowMessage.options;
+    
+    status = ChangeVisualPort(	visualPluginData,
+#if TARGET_OS_WIN32
+                              messageInfo->u.setWindowMessage.window,
+#endif
+#if TARGET_OS_MAC
+                              messageInfo->u.setWindowMessage.port,
+#endif
+                              &messageInfo->u.showWindowMessage.drawRect);
+    
+    /* this HAS to be done after setting up the viewport. Otherwise it will do
+     * just nothing, it won't even produce any errors, your textures will just be white. */
+    setupTextures();
+    
+#ifdef SG_DEBUG
+    startuSec(&gFPSTimeStamp);
+#endif
+    if(status == noErr)
+        RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
+        
+#ifdef SG_DEBUG
+        fprintf(stderr, "SpectroGraph started\n");
+#endif
+        break;
+}
+#endif // ivan - old SpectroGraph code
+
+
+
 //-------------------------------------------------------------------------------------------------
 //	MoveVisual
 //-------------------------------------------------------------------------------------------------
@@ -435,6 +481,38 @@ OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
 	
 	return noErr;
 }
+
+#if 0// ivan - old SpectroGraph code copied from the main cpp
+// should eventually be in DeactivateVisual or whatever
+
+/*
+ * Apple says:
+ Sent when iTunes is no longer displayed.
+ * I say:
+ Sent when the _visualizer_ is no longer displayed.  In other words:
+ when the user disables the visualizer, swtiches to another visualizer,
+ closes the iTunes window, or minimizes iTunes to the Dock.
+ */
+
+case kVisualPluginHideWindowMessage:
+{
+#ifdef SG_DEBUG
+    fprintf(stderr, "Hiding SpectroGraph\n");
+#endif
+    (void) ChangeVisualPort(visualPluginData,nil,nil);
+    
+    aglSetCurrentContext(NULL);
+    if( myContext != NULL ) {
+        aglSetDrawable(myContext, NULL);
+        aglDestroyContext(myContext);
+        myContext = NULL;
+    }
+    
+    MyMemClear(&visualPluginData->trackInfo,sizeof(visualPluginData->trackInfo));
+    MyMemClear(&visualPluginData->streamInfo,sizeof(visualPluginData->streamInfo));
+    break;
+}
+#endif
 
 //-------------------------------------------------------------------------------------------------
 //	ResizeVisual
@@ -527,6 +605,63 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
 	// invalidate
 
 	return noErr;
+
+#if 0 // ivan: this should call a platform-specific configure function, e.g. in SpactrographMac.mm
+    static EventTypeSpec controlEvent={kEventClassControl,kEventControlHit};
+    static const ControlID kColorSettingControlID ={'cbox',kColorSettingID};
+    static const ControlID kInvertSettingControlID={'cbox',kInvertSettingID};
+    static const ControlID kBandSettingControlID  ={'cbox',kBandSettingID};
+    static const ControlID kScrollSettingControlID={'cbox',kScrollSettingID};
+    static const ControlID kDirSettingControlID   ={'popm',kDirSettingID};
+    static const ControlID kSpeedSettingControlID ={'popm',kSpeedSettingID};
+    
+    static WindowRef settingsDialog;
+    static ControlRef color =NULL;
+    static ControlRef invert=NULL;
+    static ControlRef band  =NULL;
+    static ControlRef scroll=NULL;
+    static ControlRef dirm  =NULL;
+    static ControlRef speedm=NULL;
+    
+    IBNibRef 		nibRef;
+    //we have to find our bundle to load the nib inside of it
+    CFBundleRef iTunesPlugin;
+    
+    iTunesPlugin=CFBundleGetBundleWithIdentifier(CFSTR("be.dr-lex.SpectroGraph"));
+    if( iTunesPlugin == NULL ) {
+        fprintf( stderr, "SpectroGraph error: could not find bundle\n" );
+        SysBeep(2);
+    }
+    else {
+        CreateNibReferenceWithCFBundle(iTunesPlugin,CFSTR("SettingsDialog"), &nibRef);
+        
+        if( nibRef != nil ) {
+            CreateWindowFromNib(nibRef, CFSTR("PluginSettings"), &settingsDialog);
+            DisposeNibReference(nibRef);
+            
+            if(settingsDialog) {
+                InstallWindowEventHandler(settingsDialog,NewEventHandlerUPP(settingsControlHandler),
+                                          1,&controlEvent,0,NULL);
+                GetControlByID(settingsDialog,&kColorSettingControlID, &color);
+                GetControlByID(settingsDialog,&kInvertSettingControlID,&invert);
+                GetControlByID(settingsDialog,&kBandSettingControlID,  &band);
+                GetControlByID(settingsDialog,&kScrollSettingControlID,&scroll);
+                GetControlByID(settingsDialog,&kDirSettingControlID,   &dirm);
+                GetControlByID(settingsDialog,&kSpeedSettingControlID, &speedm);
+                
+                SetControlValue(color, gColorFlag);
+                SetControlValue(invert,gInvertFlag);
+                SetControlValue(band,  gBandFlag);
+                SetControlValue(scroll,gScrollFlag);
+                SetControlValue(dirm,  gDirection+1);
+                SetControlValue(speedm,delayToSpeed(gDelay));
+                ShowWindow(settingsDialog);
+            }
+        }
+    }
+#endif // ivan
+
+
 }
 
 #if 0 // SpectroGraph
@@ -651,6 +786,103 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
 	// Pass all unhandled events up to super so that iTunes can handle them.
 	[super keyDown:theEvent];
 }
+
+#if 0 // ivan - SpectroGraph code moved from the main cpp file because
+      // it's platform-specific.
+/*
+ Sent to the plugin in response to a MacOS event.  The plugin should return noErr
+ for any event it handles completely,or an error (unimpErr) if iTunes should handle it.
+ */
+#if TARGET_OS_MAC
+// TODO: what's the equivalent under Windows? Just disabling all controls is unacceptable!
+case kVisualPluginEventMessage:
+{
+    EventRecord* tEventPtr = messageInfo->u.eventMessage.event;
+    if ((tEventPtr->what == keyDown) || (tEventPtr->what == autoKey))
+    {    // charCodeMask,keyCodeMask;
+        char theChar = tEventPtr->message & charCodeMask;
+        
+        switch (theChar) {
+            case	'b':
+            case	'B':
+                gBandFlag = !gBandFlag;
+                status = noErr;
+                break;
+            case	'c':
+            case	'C':
+                gColorFlag = !gColorFlag;
+                status = noErr;
+                break;
+            case	'h':
+            case	'H':
+                if(++gDirection > 1)
+                    gDirection = 0;
+                rewindDisplay();
+                status = noErr;
+                break;							
+            case	'i':
+            case	'I':
+                gInvertFlag = !gInvertFlag;
+                status = noErr;
+                break;
+            case	'l':
+            case	'L':
+                gScrollFlag = !gScrollFlag;
+                status = noErr;
+                break;							
+            case	'r':
+            case	'R':
+                rewindDisplay();
+                status = noErr;
+                break;
+            case	'-':
+                if( gDelay < SG_MAXDELAY )
+                    gDelay *= SG_FACTOR;
+                else
+                    gDelay = SG_MAXDELAY;
+                status = noErr;
+                break;
+            case	'+':
+            case	'=':
+                if( gDelay > SG_MINDELAY )
+                    gDelay /= SG_FACTOR;
+                else
+                    gDelay = SG_MINDELAY;
+                status = noErr;
+                break;
+            case	'u':
+            case	'U':
+                gDelay = SG_MINDELAY;
+                status = noErr;
+                break;
+            case	'f':
+            case	'F':
+                gDelay = SG_FASTDELAY;
+                status = noErr;
+                break;
+            case	'n':
+            case	'N':
+                gDelay = SG_NORMDELAY;
+                status = noErr;
+                break;
+            case	's':
+            case	'S':
+                gDelay = SG_SLOWDELAY;
+                status = noErr;
+                break;
+                
+            default:
+                status = unimpErr;
+                break;
+        }
+    }
+    else
+        status = unimpErr;
+}
+break;
+#endif // TARGET_OS_MAC
+#endif // ivan - SpectroGraph code
+
 
 @end
 

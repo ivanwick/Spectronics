@@ -247,6 +247,7 @@ void PulseVisual( VisualPluginData * visualPluginData, UInt32 timeStampID, const
 	UpdatePulseRate( visualPluginData, ioPulseRate );
 }
 
+#if 0 // new example vs SpectroGraph
 //-------------------------------------------------------------------------------------------------
 //	VisualPluginHandler
 //-------------------------------------------------------------------------------------------------
@@ -342,6 +343,9 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			status = DeactivateVisual( visualPluginData );
 			break;
 		}
+            
+            
+            
 		/*
 			Sent when iTunes is moving the destination view to a new parent window (e.g. to/from fullscreen).
 		*/
@@ -392,6 +396,11 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			#endif
 			break;
 		}
+            
+            
+            
+            
+            
 		/*
 			Sent when the player starts.
 		*/
@@ -463,7 +472,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 	return status;	
 }
 
-#if 0 // SpectroGraph
+#else // SpectroGraph
 /*
  VisualPluginHandler from SpectroGraph
  */
@@ -488,9 +497,9 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
              However, don't do anything that will hog memory or take ages.
              */		
 		case kVisualPluginInitMessage:
-		{
+        {
 			visualPluginData = (VisualPluginData*) calloc(1, sizeof(VisualPluginData));
-			if (visualPluginData == nil)
+			if (visualPluginData == NULL)
 			{
 				status = memFullErr;
 				break;
@@ -500,36 +509,40 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			visualPluginData->appProc	= messageInfo->u.initMessage.appProc;
             
 			messageInfo->u.initMessage.refCon	= (void*) visualPluginData;
-#ifdef SG_DEBUG
-			fprintf(stderr, "SpectroGraph inited\n");
-#endif
+            #ifdef SG_DEBUG
+                fprintf(stderr, "SpectroGraph inited\n");
+            #endif
 			break;
-		}
-			
+		}	
             /*
              Sent when the visual plugin is unloaded
              */		
 		case kVisualPluginCleanupMessage:
-#ifdef SG_DEBUG
-			fprintf(stderr, "Unloading SpectroGraph...\n");
-#endif
-			if (visualPluginData != nil)
+        {
+            #ifdef SG_DEBUG
+                fprintf(stderr, "Unloading SpectroGraph...\n");
+            #endif
+			if (visualPluginData != NULL)
 				free(visualPluginData);
 			break;
-			
+		}
+            
             /*
              Sent when the visual plugin is enabled.  iTunes currently enables all
              loaded visual plugins.  The plugin should not do anything here.
              */
 		case kVisualPluginEnableMessage:
 		case kVisualPluginDisableMessage:
+        {
 			break;
+        }
             
             /*
              Sent if the plugin requests idle messages.  Do this by setting the kVisualWantsIdleMessages
              option in the RegisterVisualMessage.options field.
              */
 		case kVisualPluginIdleMessage:
+        {
 			/* This is where it gets nasty. Idle messages can be sent at any time: while iTunes is playing
 			 * (frequently), when paused (constantly), and even when the visualizer is off (a few times
 			 * per second). Moreover, _all_ plug-ins receive idle messages even if another one is active.
@@ -539,6 +552,8 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			 * with normal operation).
 			 * I need to check if iTunes is paused to avoid messing up the timing of the rendering routine,
 			 * and check if the plug-in is active to avoid rendering a non-existing port. */
+            
+            #if 0 // ivan
 			if( visualPluginData->playing == false && visualPluginData->destPort != nil ) {
 				if( getuSec(gLineTimeStamp) > gDelay ) {
 					startuSec(&gLineTimeStamp);
@@ -547,157 +562,121 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 				else
 					usleep(SG_USLEEP); // TODO: find Windows equivalent
 			}
+            #endif
 			break;
-			
+		}
+            
             /*
              Sent if the plugin requests the ability for the user to configure it.  Do this by setting
              the kVisualWantsConfigure option in the RegisterVisualMessage.options field.
              */
-#if TARGET_OS_MAC					
 		case kVisualPluginConfigureMessage:
-		{
-			static EventTypeSpec controlEvent={kEventClassControl,kEventControlHit};
-			static const ControlID kColorSettingControlID ={'cbox',kColorSettingID};
-			static const ControlID kInvertSettingControlID={'cbox',kInvertSettingID};
-			static const ControlID kBandSettingControlID  ={'cbox',kBandSettingID};
-			static const ControlID kScrollSettingControlID={'cbox',kScrollSettingID};
-			static const ControlID kDirSettingControlID   ={'popm',kDirSettingID};
-			static const ControlID kSpeedSettingControlID ={'popm',kSpeedSettingID};
-			
-			static WindowRef settingsDialog;
-			static ControlRef color =NULL;
-			static ControlRef invert=NULL;
-			static ControlRef band  =NULL;
-			static ControlRef scroll=NULL;
-			static ControlRef dirm  =NULL;
-			static ControlRef speedm=NULL;
-			
-			IBNibRef 		nibRef;
-			//we have to find our bundle to load the nib inside of it
-			CFBundleRef iTunesPlugin;
-			
-			iTunesPlugin=CFBundleGetBundleWithIdentifier(CFSTR("be.dr-lex.SpectroGraph"));
-			if( iTunesPlugin == NULL ) {
-				fprintf( stderr, "SpectroGraph error: could not find bundle\n" );
-				SysBeep(2);
-			}
-			else {
-				CreateNibReferenceWithCFBundle(iTunesPlugin,CFSTR("SettingsDialog"), &nibRef);
-                
-				if( nibRef != nil ) {
-					CreateWindowFromNib(nibRef, CFSTR("PluginSettings"), &settingsDialog);
-					DisposeNibReference(nibRef);
-                    
-					if(settingsDialog) {
-						InstallWindowEventHandler(settingsDialog,NewEventHandlerUPP(settingsControlHandler),
-						                          1,&controlEvent,0,NULL);
-						GetControlByID(settingsDialog,&kColorSettingControlID, &color);
-						GetControlByID(settingsDialog,&kInvertSettingControlID,&invert);
-						GetControlByID(settingsDialog,&kBandSettingControlID,  &band);
-						GetControlByID(settingsDialog,&kScrollSettingControlID,&scroll);
-						GetControlByID(settingsDialog,&kDirSettingControlID,   &dirm);
-						GetControlByID(settingsDialog,&kSpeedSettingControlID, &speedm);
-						
-						SetControlValue(color, gColorFlag);
-						SetControlValue(invert,gInvertFlag);
-						SetControlValue(band,  gBandFlag);
-						SetControlValue(scroll,gScrollFlag);
-						SetControlValue(dirm,  gDirection+1);
-						SetControlValue(speedm,delayToSpeed(gDelay));
-						ShowWindow(settingsDialog);
-					}
-				}
-			}
-		}
-			break;
-#endif // TARGET_OS_MAC
-            
-            /*
-             * Apple says:
-             Sent when iTunes is going to show the visual plugin in a port.  At
-             this point, the plugin should allocate any large buffers it needs.
-             * I say:
-             This message is called when the plugin is 'activated', i.e. when
-             the iTunes visualizer is enabled and this plugin is selected. This
-             is where you need to do all initializations you didn't do before.
-             */
-		case kVisualPluginShowWindowMessage:
-		{
-			initOpenGL();
-			
-			visualPluginData->destOptions = messageInfo->u.showWindowMessage.options;
-			
-			status = ChangeVisualPort(	visualPluginData,
-#if TARGET_OS_WIN32
-                                      messageInfo->u.setWindowMessage.window,
-#endif
-#if TARGET_OS_MAC
-                                      messageInfo->u.setWindowMessage.port,
-#endif
-                                      &messageInfo->u.showWindowMessage.drawRect);
-			
-			/* this HAS to be done after setting up the viewport. Otherwise it will do
-			 * just nothing, it won't even produce any errors, your textures will just be white. */
-			setupTextures();
-			
-#ifdef SG_DEBUG
-			startuSec(&gFPSTimeStamp);
-#endif
-			if(status == noErr)
-				RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
-#ifdef SG_DEBUG
-			fprintf(stderr, "SpectroGraph started\n");
-#endif
+        {
+			status = ConfigureVisual( visualPluginData );
 			break;
 		}
-            /*
-             * Apple says:
-             Sent when iTunes is no longer displayed.
-             * I say:
-             Sent when the _visualizer_ is no longer displayed.  In other words:
-             when the user disables the visualizer, swtiches to another visualizer,
-             closes the iTunes window, or minimizes iTunes to the Dock.
-             */
-		case kVisualPluginHideWindowMessage:
-#ifdef SG_DEBUG
-			fprintf(stderr, "Hiding SpectroGraph\n");
-#endif
-			(void) ChangeVisualPort(visualPluginData,nil,nil);
-			
-			aglSetCurrentContext(NULL);
-			if( myContext != NULL ) {
-				aglSetDrawable(myContext, NULL);
-				aglDestroyContext(myContext);
-				myContext = NULL;
-			}
-			
-			MyMemClear(&visualPluginData->trackInfo,sizeof(visualPluginData->trackInfo));
-			MyMemClear(&visualPluginData->streamInfo,sizeof(visualPluginData->streamInfo));
-			break;
+
+        /*
+             Sent when iTunes is going to show the visual plugin.  At this
+             point, the plugin should allocate any large buffers it needs.
+        */
+        /* this is mostly platform-specific so the original SpectroGraph code
+           got moved into the SpactrographMac.mm file.
+        */
+		case kVisualPluginActivateMessage:
+        {
+			status = ActivateVisual( visualPluginData, messageInfo->u.activateMessage.view, messageInfo->u.activateMessage.options );
             
-            /*
+			// note: do not draw here if you can avoid it, a draw message will be sent as soon as possible
+			
+			if ( status == noErr )
+				RequestArtwork( visualPluginData );
+			break;
+		}	
+
+        /*
+            Sent when this visual is no longer displayed.
+        */
+        /* ivan - copied from example code. the original was platform-specific
+               and went into the SpactrographMac.mm file.
+        */
+		case kVisualPluginDeactivateMessage:
+		{
+			UpdateTrackInfo( visualPluginData, NULL, NULL );
+            
+			status = DeactivateVisual( visualPluginData );
+			break;
+		}
+            
+
+            
+            
+            
+#if 1 // ivan - copied from new code. both these are roughly analogous to the
+            // old kVisualPluginSetWindowMessage
+        /*
+            Sent when iTunes is moving the destination view to a new parent window (e.g. to/from fullscreen).
+        */
+		case kVisualPluginWindowChangedMessage:
+		{
+			status = MoveVisual( visualPluginData, messageInfo->u.windowChangedMessage.options );
+			break;
+		}
+        /*
+             Sent when iTunes has changed the rectangle of the currently displayed visual.
+             
+             Note: for custom NSView subviews, the subview's frame is automatically resized.
+        */
+		case kVisualPluginFrameChangedMessage:
+		{
+			status = ResizeVisual( visualPluginData );
+			break;
+		}
+
+
+#else // ivan - old SpectroGraph code
+        /*
              Sent when iTunes needs to change the port or rectangle of the currently
              displayed visual.
-             */
+        */
 		case kVisualPluginSetWindowMessage:
+        {
 			visualPluginData->destOptions = messageInfo->u.setWindowMessage.options;
             
 			status = ChangeVisualPort(	visualPluginData,
-#if TARGET_OS_WIN32
+                                    #if TARGET_OS_WIN32
                                       messageInfo->u.showWindowMessage.window,
-#endif
-#if TARGET_OS_MAC
+                                    #endif
+                                    #if TARGET_OS_MAC
                                       messageInfo->u.showWindowMessage.port,
-#endif
+                                    #endif
                                       &messageInfo->u.setWindowMessage.drawRect);
             
 			if (status == noErr)
 				RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
 			break;
+        }
+#endif // ivan - old SpectroGraph code
             
-            /*
+#if 1
+        /*
+             It's time for the plugin to draw a new frame.
+             
+             For plugins using custom subviews, you should ignore this message and just
+             draw in your view's draw method.  It will never be called if your subview 
+             is set up properly.
+        */
+		case kVisualPluginDrawMessage:
+		{
+            #if !USE_SUBVIEW
+			DrawVisual( visualPluginData );
+            #endif
+			break;
+		}
+#else
+        /*
              Sent for the visual plugin to render a frame.
-             */
+        */
 		case kVisualPluginRenderMessage:
         {
 			SInt32 timeLeft = gDelay-getuSec(gLineTimeStamp); /* Overflow hazard! Hence the third test below. */
@@ -711,30 +690,63 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			}
 			else if( timeLeft > SG_USLEEP*1.3 )
 				usleep(SG_USLEEP);
+			break;
         }
-			break;
-#if 0			
-            /*
-             Sent for the visual plugin to render directly into a port.  Not necessary for normal
-             visual plugins.
+#endif
+
+#if 1 // ivan - copied from new code.
+        /*
+             Sent for the visual plugin to update its internal animation state.
+             Plugins are allowed to draw at this time but it is more efficient if they
+             wait until the kVisualPluginDrawMessage is sent OR they simply invalidate
+             their own subview.  The pulse message can be sent faster than the system
+             will allow drawing to support spectral analysis-type plugins but drawing
+             will be limited to the system refresh rate.
              */
-		case kVisualPluginRenderToPortMessage:
-			status = unimpErr;
+		case kVisualPluginPulseMessage:
+		{
+			PulseVisual( visualPluginData,
+                        messageInfo->u.pulseMessage.timeStampID,
+                        messageInfo->u.pulseMessage.renderData,
+                        &messageInfo->u.pulseMessage.newPulseRateInHz );
+            
+			InvalidateVisual( visualPluginData );
 			break;
-#endif //0
-            /*
+		}
+#else // ivan - old SpectroGraph code
+        /*
              Sent in response to an update event.  The visual plugin should update
              into its remembered port.  This will only be sent if the plugin has been
              previously given a ShowWindow message.
-             */	
+        */	
 		case kVisualPluginUpdateMessage:
 			RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
 			break;
+#endif // ivan - old SpectroGraph code
+
+
+            
+            
+            
+            
+            
             
             /*
              Sent when the player starts.
              */
 		case kVisualPluginPlayMessage:
+#if 1 // ivan - new example code
+		{
+			visualPluginData->playing = true;
+			
+			UpdateTrackInfo( visualPluginData, messageInfo->u.playMessage.trackInfo, messageInfo->u.playMessage.streamInfo );
+            
+			RequestArtwork( visualPluginData );
+			
+			InvalidateVisual( visualPluginData );
+			break;
+		}            
+#else // ivan - old SpectroGraph code
 			if (messageInfo->u.playMessage.trackInfo != nil)
 				visualPluginData->trackInfo = *messageInfo->u.playMessage.trackInfoUnicode;
 			else
@@ -747,6 +759,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
             
 			visualPluginData->playing = true;
 			break;
+#endif // ivan - old SpectroGraph code
             
             /*
              Sent when the player changes the current track information.  This
@@ -755,6 +768,17 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
              information about the currently playing song.
              */
 		case kVisualPluginChangeTrackMessage:
+#if 1 // ivan - new example code
+        {
+			UpdateTrackInfo( visualPluginData, messageInfo->u.changeTrackMessage.trackInfo, messageInfo->u.changeTrackMessage.streamInfo );
+            
+			RequestArtwork( visualPluginData );
+            
+			InvalidateVisual( visualPluginData );
+			break;
+		}
+
+#else // ivan - old SpectroGraph code
 			if (messageInfo->u.changeTrackMessage.trackInfo != nil)
 				visualPluginData->trackInfo = *messageInfo->u.changeTrackMessage.trackInfoUnicode;
 			else
@@ -765,24 +789,49 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			else
 				MyMemClear(&visualPluginData->streamInfo,sizeof(visualPluginData->streamInfo));
 			break;
-            
+#endif // ivan - old SpectroGraph code
             /*
              Sent when the player stops.
              */
 		case kVisualPluginStopMessage:
+#if 1 // ivan - new example code
+        {
+			visualPluginData->playing = false;
+			
+			ResetRenderData( visualPluginData );
+            
+			InvalidateVisual( visualPluginData );
+			break;
+		}
+
+#else // ivan - old SpectroGraph code
 			visualPluginData->playing = false;
 			
 			ResetRenderData(visualPluginData);
             
 			RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
 			break;
+#endif // ivan - old SpectroGraph code
             
             /*
              Sent when the player changes position.
              */
 		case kVisualPluginSetPositionMessage:
-			break;
+        {
+            break;
+        }
             
+#if 0 // ivan - messages not supported in 2.0 api
+        #if 0                   
+            /*
+             Sent for the visual plugin to render directly into a port.  Not necessary for normal
+             visual plugins.
+             */
+        case kVisualPluginRenderToPortMessage:
+            status = unimpErr;
+            break;
+        #endif
+
             /*
              Sent when the player pauses.  iTunes does not currently use pause or unpause.
              A pause in iTunes is handled by stopping and remembering the position.
@@ -802,99 +851,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 		case kVisualPluginUnpauseMessage:
 			visualPluginData->playing = true;
 			break;
-            
-            /*
-             Sent to the plugin in response to a MacOS event.  The plugin should return noErr
-             for any event it handles completely,or an error (unimpErr) if iTunes should handle it.
-             */
-#if TARGET_OS_MAC
-            // TODO: what's the equivalent under Windows? Just disabling all controls is unacceptable!
-		case kVisualPluginEventMessage:
-        {
-            EventRecord* tEventPtr = messageInfo->u.eventMessage.event;
-            if ((tEventPtr->what == keyDown) || (tEventPtr->what == autoKey))
-            {    // charCodeMask,keyCodeMask;
-                char theChar = tEventPtr->message & charCodeMask;
-                
-                switch (theChar) {
-                    case	'b':
-                    case	'B':
-                        gBandFlag = !gBandFlag;
-                        status = noErr;
-                        break;
-                    case	'c':
-                    case	'C':
-                        gColorFlag = !gColorFlag;
-                        status = noErr;
-                        break;
-                    case	'h':
-                    case	'H':
-                        if(++gDirection > 1)
-                            gDirection = 0;
-                        rewindDisplay();
-                        status = noErr;
-                        break;							
-                    case	'i':
-                    case	'I':
-                        gInvertFlag = !gInvertFlag;
-                        status = noErr;
-                        break;
-                    case	'l':
-                    case	'L':
-                        gScrollFlag = !gScrollFlag;
-                        status = noErr;
-                        break;							
-                    case	'r':
-                    case	'R':
-                        rewindDisplay();
-                        status = noErr;
-                        break;
-                    case	'-':
-                        if( gDelay < SG_MAXDELAY )
-                            gDelay *= SG_FACTOR;
-                        else
-                            gDelay = SG_MAXDELAY;
-                        status = noErr;
-                        break;
-                    case	'+':
-                    case	'=':
-                        if( gDelay > SG_MINDELAY )
-                            gDelay /= SG_FACTOR;
-                        else
-                            gDelay = SG_MINDELAY;
-                        status = noErr;
-                        break;
-                    case	'u':
-                    case	'U':
-                        gDelay = SG_MINDELAY;
-                        status = noErr;
-                        break;
-                    case	'f':
-                    case	'F':
-                        gDelay = SG_FASTDELAY;
-                        status = noErr;
-                        break;
-                    case	'n':
-                    case	'N':
-                        gDelay = SG_NORMDELAY;
-                        status = noErr;
-                        break;
-                    case	's':
-                    case	'S':
-                        gDelay = SG_SLOWDELAY;
-                        status = noErr;
-                        break;
-                        
-                    default:
-                        status = unimpErr;
-                        break;
-                }
-            }
-            else
-                status = unimpErr;
-        }
-			break;
-#endif // TARGET_OS_MAC
+#endif // ivan - messages not supported in 2.0 api
             
 		default:
 			status = unimpErr;
