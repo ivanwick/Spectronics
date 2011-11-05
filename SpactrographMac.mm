@@ -740,6 +740,28 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
 	}
 }
 
+#if 0 // ivan - from SpectroGraph. Originally part of the plugin handler
+/*
+ Sent for the visual plugin to render a frame.
+ */
+case kVisualPluginRenderMessage:
+{
+    SInt32 timeLeft = gDelay-getuSec(gLineTimeStamp); /* Overflow hazard! Hence the third test below. */
+    if( (gDelay == SG_MINDELAY) || timeLeft < 0 || (UInt32)timeLeft > gDelay ) {
+        startuSec(&gLineTimeStamp);
+        visualPluginData->renderTimeStampID	= messageInfo->u.renderMessage.timeStampID;
+        
+        ProcessRenderData(visualPluginData,messageInfo->u.renderMessage.renderData);
+        
+        RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,false);
+    }
+    else if( timeLeft > SG_USLEEP*1.3 )
+        usleep(SG_USLEEP);
+    break;
+}
+
+#endif
+
 //-------------------------------------------------------------------------------------------------
 //	acceptsFirstResponder
 //-------------------------------------------------------------------------------------------------

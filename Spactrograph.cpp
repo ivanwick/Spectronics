@@ -433,7 +433,6 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
         }
 #endif // ivan - old SpectroGraph code
             
-#if 1
         /*
              It's time for the plugin to draw a new frame.
              
@@ -441,6 +440,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
              draw in your view's draw method.  It will never be called if your subview 
              is set up properly.
         */
+        /* We're using a subview on MacOS but in Windows, you'll need to call DrawVisual from here. */
 		case kVisualPluginDrawMessage:
 		{
             #if !USE_SUBVIEW
@@ -448,26 +448,6 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
             #endif
 			break;
 		}
-#else
-        /*
-             Sent for the visual plugin to render a frame.
-        */
-		case kVisualPluginRenderMessage:
-        {
-			SInt32 timeLeft = gDelay-getuSec(gLineTimeStamp); /* Overflow hazard! Hence the third test below. */
-			if( (gDelay == SG_MINDELAY) || timeLeft < 0 || (UInt32)timeLeft > gDelay ) {
-				startuSec(&gLineTimeStamp);
-				visualPluginData->renderTimeStampID	= messageInfo->u.renderMessage.timeStampID;
-				
-				ProcessRenderData(visualPluginData,messageInfo->u.renderMessage.renderData);
-				
-				RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,false);
-			}
-			else if( timeLeft > SG_USLEEP*1.3 )
-				usleep(SG_USLEEP);
-			break;
-        }
-#endif
 
 #if 1 // ivan - copied from new code.
         /*
@@ -704,6 +684,6 @@ static OSStatus RegisterVisualPlugin(PluginMessageInfo *messageInfo)
 	return status;
 	
 }
-#endif
+#endif // 0 SpectroGraph
 
 
