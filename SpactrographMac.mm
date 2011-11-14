@@ -56,6 +56,8 @@
 #import <OpenGL/glu.h>
 #import <string.h>
 
+#import <sys/time.h>  // ivan- for all the SpectroGraph aux functions dealing with usec
+
 //-------------------------------------------------------------------------------------------------
 //	constants, etc.
 //-------------------------------------------------------------------------------------------------
@@ -74,7 +76,7 @@ extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *
 //	VisualView
 //-------------------------------------------------------------------------------------------------
 
-@interface VisualView : NSView
+@interface VisualView : NSOpenGLView
 {
 	VisualPluginData *	_visualPluginData;
 }
@@ -91,6 +93,8 @@ extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *
 
 #endif	// USE_SUBVIEW
 
+
+#if 1
 //-------------------------------------------------------------------------------------------------
 //	DrawVisual
 //-------------------------------------------------------------------------------------------------
@@ -168,22 +172,154 @@ void DrawVisual( VisualPluginData * visualPluginData )
 	}
 }
 
-#if 0 // SpectroGraph
+#else // SpectroGraph
+
+// Width = frequency resolution (should be 256)
+#define SG_TEXWIDTH  256
+// Larger textures make glCopyTexSubImage2D slower. 256*128 seems close to
+// the point where improvement becomes negligible.
+#define SG_TEXHEIGHT 128
+// Number of textures to allocate, must be such that SG_NTEXTURES*SG_TEXHEIGHT
+// is as wide as the widest possible display. 4096 pixels seems reasonable...
+#define SG_NTEXTURES 32
+// Maximum number of lines per update (must be power of 2). 4 seems the maximum,
+// above this the graph starts showing obvious bands.
+#define SG_MAXCHUNK  4
+
+
+#define SG_USLEEP		1000
+#define SG_FACTOR		1.1
+/* SG_MINDELAY must be such that SG_FACTOR*SG_MINDELAY >= SG_MINDELAY+1 */
+#define SG_MINDELAY		10 // 100000lps
+#define SG_FASTDELAY	1000 // 1000lps
+#define SG_NORMDELAY	7500  // 133lps
+#define SG_SLOWDELAY	100000 // 10lps
+#define SG_MAXDELAY		1000000 // 1lps
+
+
+static UInt8 freshPixels[SG_TEXWIDTH*4*SG_MAXCHUNK];
+static int nStored = 0;
+#ifdef SG_DEBUG
+static unsigned int nFps = 0;
+#endif
+
+// Choosing the right types here is crucial for optimal speed of glCopyTexSubImage2D
+#if __BIG_ENDIAN__
+#define ARGB_IMAGE_TYPE GL_UNSIGNED_INT_8_8_8_8_REV
+#else
+#define ARGB_IMAGE_TYPE GL_UNSIGNED_INT_8_8_8_8
+#endif
+
+
+//########################################
+//	local ( static ) globals
+//########################################
+
+static Boolean	gColorFlag   = TRUE;
+static Boolean	gInvertFlag  = FALSE;
+static Boolean	gBandFlag    = TRUE;
+static Boolean	gScrollFlag  = FALSE;
+static UInt8	gDirection   = 0;
+static GLuint	*pnTextureID = NULL; // Array with IDs
+static UInt8	gnTexID;    // current texture index
+static UInt32	gnPosition; // position inside texture
+static UInt8	gnLPU;      // number of lines per update
+
+static UInt32	gDelay = SG_NORMDELAY;
+static struct timeval	gLineTimeStamp = {0,0};
+static struct timeval	gFrameTimeStamp = {0,0};
+#ifdef SG_DEBUG
+static struct timeval	gFPSTimeStamp = {0,0};
+#endif
+
+static void UInt8ToARGB(UInt8 pValueL, UInt8 pValueR, UInt8 *pARGBPtr)
+{
+	if(gInvertFlag) {
+		pValueL = 0xFF-pValueL;
+		pValueR = 0xFF-pValueR;
+	}
+	
+	pARGBPtr[0] = 0xFF;
+	if(gColorFlag)	{
+		pARGBPtr[1] = pValueL;
+		pARGBPtr[2] = pValueR;
+		pARGBPtr[3] = 0x00;
+	}
+	else
+		pARGBPtr[3] = pARGBPtr[2] = pARGBPtr[1] = (pValueL+pValueR)/2;
+}
+
+/* Set time reference */
+static inline void startuSec( struct timeval *tv )
+{
+	gettimeofday(tv, NULL);
+}
+
+/* Return number of microseconds since last call of startuSec.
+ * This will overflow after 1 hour, 11 minutes and 34.967 seconds. */
+static inline UInt32 getuSec( struct timeval tv )
+{
+	UInt32 result;
+	struct timeval timeNow;
+	gettimeofday(&timeNow, NULL);
+	result = timeNow.tv_sec-tv.tv_sec;
+	return 1000000*result+(timeNow.tv_usec-tv.tv_usec);
+}
+
+//########################################
+// setupTextures
+//########################################
+static void setupTextures( void )
+{
+	unsigned int i;
+	unsigned char *blankTexture = (unsigned char*)malloc(SG_TEXWIDTH*SG_TEXHEIGHT*4); // ivan- TODO change to calloc
+	memset( blankTexture, 0, SG_TEXWIDTH*SG_TEXHEIGHT*4 ); // ivan- TODO then you don't need to manually clear y0
+	if(pnTextureID)
+		free(pnTextureID);
+	// Strictly spoken, we only need to alloc enough textures to cover the viewport,
+	// but this would make resizing complicated.
+	pnTextureID = (GLuint *)malloc(SG_NTEXTURES*sizeof(GLuint));   // ivan- TODO change to calloc
+	glEnable(GL_TEXTURE_2D);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glGenTextures(SG_NTEXTURES, pnTextureID);
+#ifdef SG_DEBUG
+	checkGLError("glGenTextures");
+#endif
+	for( i=0; i<SG_NTEXTURES; i++ ) {
+		glBindTexture(GL_TEXTURE_2D, pnTextureID[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		// Turn off texture repeating
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,    //target, LOD (for mipmaps), internalFormat
+		             SG_TEXWIDTH, SG_TEXHEIGHT,   //w, h
+		             0, GL_BGRA, ARGB_IMAGE_TYPE, //border, format, type
+		             blankTexture);               //data
+	}
+	free(blankTexture);
+	glEnable(GL_TEXTURE_2D);
+	gnPosition = 0;
+	gnTexID = 0;
+}
+
+
 //############################################
 //	RenderVisualPort, aka drawing happens here from SpectroGraph
 //############################################
-static void RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort,const Rect *destRect,Boolean onlyUpdate)
+void DrawVisual( VisualPluginData * visualPluginData )
+//RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort,const Rect *destRect,Boolean onlyUpdate)
 {
-	(void) visualPluginData;
-	(void) onlyUpdate;
+    // this shouldn't happen but let's be safe
+	if ( visualPluginData->destView == NULL )
+		return;
+
 	int i;
 	UInt8 *spectrumDataL = visualPluginData->renderData.spectrumData[0],
-    *spectrumDataR = visualPluginData->renderData.spectrumData[1];
+          *spectrumDataR = visualPluginData->renderData.spectrumData[1];
 	UInt16 nTimePixels;
 	
-	if (destPort == nil)
-		return;
-    
 	glClearColor( 0.0, 0.0, 0.0, 0.0 );
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
@@ -209,9 +345,9 @@ static void RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE
 	gnPosition = gnPosition+gnLPU;
     
 	if(gDirection == 0)
-		nTimePixels = visualPluginData->destRect.right - visualPluginData->destRect.left;
+		nTimePixels = visualPluginData->destRect.size.width;
 	else
-		nTimePixels = visualPluginData->destRect.bottom - visualPluginData->destRect.top;
+		nTimePixels = visualPluginData->destRect.size.height;
 	int nNumTiles = (int)ceil((float)nTimePixels/SG_TEXHEIGHT);
 	if(gScrollFlag)
 		nNumTiles++;
@@ -297,14 +433,7 @@ static void RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE
 	glFinish();
 	glFlush();
 	
-#if TARGET_OS_MAC
-	aglSwapBuffers(myContext);
-#else
-	{
-		HDC hdc = GetDC(destPort);
-		SwapBuffers(hdc);
-	}
-#endif
+//	aglSwapBuffers(myContext);  //?????? ivan- update this for NSOpenGLView
 	
 	UInt32 nUSec = getuSec(gFrameTimeStamp);
 	// We try to maintain a framerate of about 60FPS. If it drops below that,
@@ -367,6 +496,7 @@ void InvalidateVisual( VisualPluginData * visualPluginData )
 #endif
 }
 
+#if 1 // example code
 //-------------------------------------------------------------------------------------------------
 //	CreateVisualContext
 //-------------------------------------------------------------------------------------------------
@@ -403,7 +533,7 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 	return status;
 }
 
-#if 0 // ivan - old SpectroGraph code copied from the main cpp
+#else // ivan - old SpectroGraph code copied from the main cpp
       // should eventually be in ActivateVisual or whatever
 /*
  * Apple says:
@@ -414,36 +544,36 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
  the iTunes visualizer is enabled and this plugin is selected. This
  is where you need to do all initializations you didn't do before.
  */
-case kVisualPluginShowWindowMessage:
+OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VIEW destView, OptionBits options )
 {
+    OSStatus status;
+    // initOpenGL();  // ivan- this is taken care-of by NSOpenGLView initialization
     
-    initOpenGL();
+    visualPluginData->destOptions = options;
     
-    visualPluginData->destOptions = messageInfo->u.showWindowMessage.options;
-    
+    /* ivan- old SpectroGraph function, don't know if we're really using it
     status = ChangeVisualPort(	visualPluginData,
-#if TARGET_OS_WIN32
-                              messageInfo->u.setWindowMessage.window,
-#endif
-#if TARGET_OS_MAC
                               messageInfo->u.setWindowMessage.port,
-#endif
                               &messageInfo->u.showWindowMessage.drawRect);
+    */
     
     /* this HAS to be done after setting up the viewport. Otherwise it will do
      * just nothing, it won't even produce any errors, your textures will just be white. */
-    setupTextures();
+    //ivan- moved this into the NSOpenGLView init setupTextures();
     
 #ifdef SG_DEBUG
     startuSec(&gFPSTimeStamp);
 #endif
+    /* ivan- don't think we need to manually call any Render/draw function since
+       the NSOpenGLView should take care of it
     if(status == noErr)
         RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
+     */
         
 #ifdef SG_DEBUG
         fprintf(stderr, "SpectroGraph started\n");
 #endif
-        break;
+    return noErr;
 }
 #endif // ivan - old SpectroGraph code
 
@@ -906,6 +1036,17 @@ break;
 #endif // ivan - SpectroGraph code
 
 
+/* ivan- i think this is needed for the spectrograph textures
+-(id)init
+{
+    if (self = [super init]) {
+        [[self openGLContext] makeCurrentContext];
+        setupTextures();
+    }
+    return self;
+}
+*/
+
 @end
 
 #endif	// USE_SUBVIEW
@@ -1037,34 +1178,6 @@ OSStatus iTunesPluginMainMachO( OSType message, PluginMessageInfo * messageInfo,
 //#define	kTVisualPluginReleaseStage		developStage
 #define	kTVisualPluginNonFinalRelease	0
 
-// Width = frequency resolution (should be 256)
-#define SG_TEXWIDTH  256
-// Larger textures make glCopyTexSubImage2D slower. 256*128 seems close to
-// the point where improvement becomes negligible.
-#define SG_TEXHEIGHT 128
-// Number of textures to allocate, must be such that SG_NTEXTURES*SG_TEXHEIGHT
-// is as wide as the widest possible display. 4096 pixels seems reasonable...
-#define SG_NTEXTURES 32
-// Maximum number of lines per update (must be power of 2). 4 seems the maximum,
-// above this the graph starts showing obvious bands.
-#define SG_MAXCHUNK  4
-
-
-#define SG_USLEEP		1000
-#define SG_FACTOR		1.1
-/* SG_MINDELAY must be such that SG_FACTOR*SG_MINDELAY >= SG_MINDELAY+1 */
-#define SG_MINDELAY		10 // 100000lps
-#define SG_FASTDELAY	1000 // 1000lps
-#define SG_NORMDELAY	7500  // 133lps
-#define SG_SLOWDELAY	100000 // 10lps
-#define SG_MAXDELAY		1000000 // 1lps
-
-// Choosing the right types here is crucial for optimal speed of glCopyTexSubImage2D
-#if __BIG_ENDIAN__
-#define ARGB_IMAGE_TYPE GL_UNSIGNED_INT_8_8_8_8_REV
-#else
-#define ARGB_IMAGE_TYPE GL_UNSIGNED_INT_8_8_8_8
-#endif
 
 
 // These IDs correspond to the IDs in Interface Builder
@@ -1116,48 +1229,10 @@ static AGLContext myContext = NULL;
 // TODO! Windows stuff comes here
 #endif
 
-//########################################
-//	local ( static ) globals
-//########################################
-
-static Boolean	gColorFlag   = TRUE;
-static Boolean	gInvertFlag  = FALSE;
-static Boolean	gBandFlag    = TRUE;
-static Boolean	gScrollFlag  = FALSE;
-static UInt8	gDirection   = 0;
-static GLuint	*pnTextureID = NULL; // Array with IDs
-static UInt8	gnTexID;    // current texture index
-static UInt32	gnPosition; // position inside texture
-static UInt8	gnLPU;      // number of lines per update
-
-static UInt32	gDelay = SG_NORMDELAY;
-static struct timeval	gLineTimeStamp = {0,0};
-static struct timeval	gFrameTimeStamp = {0,0};
-#ifdef SG_DEBUG
-static struct timeval	gFPSTimeStamp = {0,0};
-#endif
-
 
 //########################################
 //	static ( local ) functions
 //########################################
-
-/* Set time reference */
-static inline void startuSec( struct timeval *tv )
-{
-	gettimeofday(tv, NULL);
-}
-
-/* Return number of microseconds since last call of startuSec.
- * This will overflow after 1 hour, 11 minutes and 34.967 seconds. */
-static inline UInt32 getuSec( struct timeval tv )
-{
-	UInt32 result;
-	struct timeval timeNow;
-	gettimeofday(&timeNow, NULL);
-	result = timeNow.tv_sec-tv.tv_sec;
-	return 1000000*result+(timeNow.tv_usec-tv.tv_usec);
-}
 
 
 /* Returns the nearest speed menu setting to the current setting */
@@ -1205,44 +1280,6 @@ static int checkGLError( const char *funcName )
 
 
 //########################################
-// setupTextures
-//########################################
-static void setupTextures( void )
-{
-	unsigned int i;
-	unsigned char *blankTexture = malloc(SG_TEXWIDTH*SG_TEXHEIGHT*4);
-	memset( blankTexture, 0, SG_TEXWIDTH*SG_TEXHEIGHT*4 );
-	if(pnTextureID)
-		free(pnTextureID);
-	// Strictly spoken, we only need to alloc enough textures to cover the viewport,
-	// but this would make resizing complicated.
-	pnTextureID = malloc(SG_NTEXTURES*sizeof(GLuint));
-	glEnable(GL_TEXTURE_2D);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glGenTextures(SG_NTEXTURES, pnTextureID);
-#ifdef SG_DEBUG
-	checkGLError("glGenTextures");
-#endif
-	for( i=0; i<SG_NTEXTURES; i++ ) {
-		glBindTexture(GL_TEXTURE_2D, pnTextureID[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		// Turn off texture repeating
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,    //target, LOD (for mipmaps), internalFormat
-		             SG_TEXWIDTH, SG_TEXHEIGHT,   //w, h
-		             0, GL_BGRA, ARGB_IMAGE_TYPE, //border, format, type
-		             blankTexture);               //data
-	}
-	free(blankTexture);
-	glEnable(GL_TEXTURE_2D);
-	gnPosition = 0;
-	gnTexID = 0;
-}
-
-//########################################
 // initOpenGL
 //########################################
 static void initOpenGL( void )
@@ -1262,30 +1299,6 @@ static void initOpenGL( void )
 	// TODO: add stuff for Windows WGL
 #endif
 }	
-
-
-static void UInt8ToARGB(UInt8 pValueL, UInt8 pValueR, UInt8 *pARGBPtr)
-{
-	if(gInvertFlag) {
-		pValueL = 0xFF-pValueL;
-		pValueR = 0xFF-pValueR;
-	}
-	
-	pARGBPtr[0] = 0xFF;
-	if(gColorFlag)	{
-		pARGBPtr[1] = pValueL;
-		pARGBPtr[2] = pValueR;
-		pARGBPtr[3] = 0x00;
-	}
-	else
-		pARGBPtr[3] = pARGBPtr[2] = pARGBPtr[1] = (pValueL+pValueR)/2;
-}
-
-static UInt8 freshPixels[SG_TEXWIDTH*4*SG_MAXCHUNK];
-static int nStored = 0;
-#ifdef SG_DEBUG
-static unsigned int nFps = 0;
-#endif
 
 
 
