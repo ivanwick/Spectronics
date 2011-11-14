@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>iTunes Sample Visualizer</string>
+	<string>Spactrograph</string>
 	<key>CFBundleGetInfoString</key>
-	<string>iTunes Sample Visualizer</string>
+	<string>Spactrograph Visualizer</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.apple.example.iTunesVisualizer</string>
+	<string>org.intfound.Spactrograph</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>iTunes Sample Visualizer</string>
+	<string>Spactrograph</string>
 	<key>CFBundlePackageType</key>
 	<string>hvpl</string>
 	<key>CFBundleSignature</key>
