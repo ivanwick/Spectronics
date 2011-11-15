@@ -90,27 +90,12 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
 				visualPluginData->maxLevel[channel] = value;
 		}
 	}
-}
 
-#if 0 // SpectroGraph
-//########################################
-// ProcessRenderData from SpectroGraph
-//########################################
-static void ProcessRenderData( VisualPluginData *visualPluginDataPtr, const RenderVisualData *renderData )
-{
-    //	SInt16		index;
-    //	SInt32		channel;
-    
-	if(renderData == nil) {
-		MyMemClear(&visualPluginDataPtr->renderData,sizeof(visualPluginDataPtr->renderData));
-		return;
-	}
-    
-	visualPluginDataPtr->renderData = *renderData;
 	
 	/* Anti-banding: we assume there is no frequency content in the highest
 	 * frequency possible (which should be the case for all normal music).
 	 * So if there is something there, we subtract it from all frequencies. */
+#if 0 // ivan- gBandFlag is supposed to be a param var, deal with this later.
 	if(gBandFlag) {
 		UInt8 *spectrumDataL = visualPluginDataPtr->renderData.spectrumData[0],
         *spectrumDataR = visualPluginDataPtr->renderData.spectrumData[1];
@@ -122,7 +107,8 @@ static void ProcessRenderData( VisualPluginData *visualPluginDataPtr, const Rend
 			spectrumDataR[i] -= (spectrumDataR[i]-biasR > 0) ? biasR : spectrumDataR[i];
 		}
 	}		
-	
+#endif
+    
 	/* This just finds the min & max values of the spectrum data, if
 	 * there's no need for this, you can drop this to save some CPU */
     /*	for (channel = 0;channel < renderData->numSpectrumChannels;channel++)
@@ -144,10 +130,6 @@ static void ProcessRenderData( VisualPluginData *visualPluginDataPtr, const Rend
      }
      }*/
 }
-#endif // SpectroGraph
-
-
-
 
 
 //-------------------------------------------------------------------------------------------------
@@ -157,24 +139,15 @@ static void ProcessRenderData( VisualPluginData *visualPluginDataPtr, const Rend
 void ResetRenderData( VisualPluginData * visualPluginData )
 {
 	memset( &visualPluginData->renderData, 0, sizeof(visualPluginData->renderData) );
-	memset( visualPluginData->minLevel, 0, sizeof(visualPluginData->minLevel) );
-}
 
-#if 0 // SpectroGraph
-/*
- ResetRenderData from SpectroGraph
- */
-static void ResetRenderData(VisualPluginData *visualPluginData)
-{
-	MyMemClear(&visualPluginData->renderData,sizeof(visualPluginData->renderData));
+	// ivan- the following line and then all the rest do the same thing w/e
+    memset( visualPluginData->minLevel, 0, sizeof(visualPluginData->minLevel) );
     
 	visualPluginData->minLevel[0] = 
     visualPluginData->minLevel[1] =
     visualPluginData->maxLevel[0] =
     visualPluginData->maxLevel[1] = 0;
 }
-#endif // SpectroGraph
-
 
 
 //-------------------------------------------------------------------------------------------------

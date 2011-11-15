@@ -94,7 +94,7 @@ extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *
 #endif	// USE_SUBVIEW
 
 
-#if 1
+#if 0 // ivan- here's example code
 //-------------------------------------------------------------------------------------------------
 //	DrawVisual
 //-------------------------------------------------------------------------------------------------
@@ -496,7 +496,6 @@ void InvalidateVisual( VisualPluginData * visualPluginData )
 #endif
 }
 
-#if 1 // example code
 //-------------------------------------------------------------------------------------------------
 //	CreateVisualContext
 //-------------------------------------------------------------------------------------------------
@@ -530,53 +529,13 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 
 #endif
 
-	return status;
-}
-
-#else // ivan - old SpectroGraph code copied from the main cpp
-      // should eventually be in ActivateVisual or whatever
-/*
- * Apple says:
- Sent when iTunes is going to show the visual plugin in a port.  At
- this point, the plugin should allocate any large buffers it needs.
- * I say:
- This message is called when the plugin is 'activated', i.e. when
- the iTunes visualizer is enabled and this plugin is selected. This
- is where you need to do all initializations you didn't do before.
- */
-OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VIEW destView, OptionBits options )
-{
-    OSStatus status;
-    // initOpenGL();  // ivan- this is taken care-of by NSOpenGLView initialization
-    
-    visualPluginData->destOptions = options;
-    
-    /* ivan- old SpectroGraph function, don't know if we're really using it
-    status = ChangeVisualPort(	visualPluginData,
-                              messageInfo->u.setWindowMessage.port,
-                              &messageInfo->u.showWindowMessage.drawRect);
-    */
-    
-    /* this HAS to be done after setting up the viewport. Otherwise it will do
-     * just nothing, it won't even produce any errors, your textures will just be white. */
-    //ivan- moved this into the NSOpenGLView init setupTextures();
-    
 #ifdef SG_DEBUG
     startuSec(&gFPSTimeStamp);
+    fprintf(stderr, "SpectroGraph started\n");
 #endif
-    /* ivan- don't think we need to manually call any Render/draw function since
-       the NSOpenGLView should take care of it
-    if(status == noErr)
-        RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
-     */
-        
-#ifdef SG_DEBUG
-        fprintf(stderr, "SpectroGraph started\n");
-#endif
-    return noErr;
+    
+	return status;
 }
-#endif // ivan - old SpectroGraph code
-
 
 
 //-------------------------------------------------------------------------------------------------
@@ -1037,15 +996,17 @@ break;
 
 
 /* ivan- i think this is needed for the spectrograph textures
--(id)init
+*/
+-(id)initWithFrame:(NSRect)frameRect
 {
-    if (self = [super init]) {
+    NSLog(@"VisualView initWithFrame");
+    if (self = [super initWithFrame:frameRect]) {
         [[self openGLContext] makeCurrentContext];
         setupTextures();
     }
     return self;
 }
-*/
+
 
 @end
 
