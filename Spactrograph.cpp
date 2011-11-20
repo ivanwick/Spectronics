@@ -593,11 +593,6 @@ OSStatus RegisterVisualPlugin( PluginMessageInfo * messageInfo )
 	
     /* some initialization left over from spectrograph */
     /*
-     playerMessageInfo.u.registerVisualPluginMessage.options	= kVisualWantsIdleMessages 
-     | kVisualWantsConfigure 
-     | kVisualProvidesUnicodeName;
-     */
-    /*
 	startuSec(&gLineTimeStamp);
 	startuSec(&gFrameTimeStamp);
 	gnLPU = SG_MAXCHUNK;
