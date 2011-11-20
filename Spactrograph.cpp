@@ -588,75 +588,19 @@ OSStatus RegisterVisualPlugin( PluginMessageInfo * messageInfo )
 	playerMessageInfo.u.registerVisualPluginMessage.maxHeight				= 0;	// no max height limit
 	
 	status = PlayerRegisterVisualPlugin( messageInfo->u.initMessage.appCookie, messageInfo->u.initMessage.appProc, &playerMessageInfo );
-		
+    
 	return status;
-}
-
-#if 0 // SpectroGraph
-/*
- RegisterVisualPlugin from SpectroGraph
- */
-static OSStatus RegisterVisualPlugin(PluginMessageInfo *messageInfo)
-{
-	OSStatus			status;
-	PlayerMessageInfo	playerMessageInfo;
-	Str255				pluginName = kTVisualPluginName;
-    
-	MyMemClear(&playerMessageInfo.u.registerVisualPluginMessage,sizeof(playerMessageInfo.u.registerVisualPluginMessage));
 	
-	memcpy(&playerMessageInfo.u.registerVisualPluginMessage.name[0], &pluginName[0], pluginName[0] + 1);
-    
-#if TARGET_OS_MAC					
-    CFStringRef tCFStringRef = CFStringCreateWithPascalString( kCFAllocatorDefault, pluginName, kCFStringEncodingUTF8 );
-    if ( tCFStringRef ) 
-    {
-        CFIndex length = CFStringGetLength( tCFStringRef );
-        if ( length > 255 ) 
-        {
-            length = 255;
-        }
-        playerMessageInfo.u.registerVisualPluginMessage.unicodeName[0] = CFStringGetBytes( tCFStringRef, CFRangeMake( 0, length ), kCFStringEncodingUnicode, 0, FALSE, (UInt8 *) &playerMessageInfo.u.registerVisualPluginMessage.unicodeName[1], 255, NULL );
-        CFRelease( tCFStringRef );
-    }
-#endif //TARGET_OS_MAC					
-    
-	SetNumVersion(&playerMessageInfo.u.registerVisualPluginMessage.pluginVersion,kTVisualPluginMajorVersion,kTVisualPluginMinorVersion,kTVisualPluginReleaseStage,kTVisualPluginNonFinalRelease);
-    
-	playerMessageInfo.u.registerVisualPluginMessage.options					=	kVisualWantsIdleMessages 
-#if TARGET_OS_MAC					
-    | kVisualWantsConfigure | kVisualProvidesUnicodeName
-#endif
-    ;
-	playerMessageInfo.u.registerVisualPluginMessage.handler					= (VisualPluginProcPtr)VisualPluginHandler;
-	playerMessageInfo.u.registerVisualPluginMessage.registerRefCon			= 0;
-	playerMessageInfo.u.registerVisualPluginMessage.creator					= kTVisualPluginCreator;
-	
-	/* This determines how often the plugin receives data. The name is deceiving because we can't
-	 * get millisecond accuracy. Instead, ticks of 16msec are used, so it's impossible to go faster
-	 * than 62.5 packets/second. For this plug-in that's still too slow, so I have to disable this
-	 * by using 0xFFFFFFFF (= as fast as possible) and do my own speed control.
-	 * If your own plug-in can do with 62.5 frames/second, by all means enable this, because otherwise
-	 * you'll have to use similar ugly tricks as I to avoid 100% cpu usage. */	
-	playerMessageInfo.u.registerVisualPluginMessage.timeBetweenDataInMS		= 0xFFFFFFFF;
-	playerMessageInfo.u.registerVisualPluginMessage.numWaveformChannels		= 2;
-	playerMessageInfo.u.registerVisualPluginMessage.numSpectrumChannels		= 2;
-	
-	playerMessageInfo.u.registerVisualPluginMessage.minWidth				= 64;
-	playerMessageInfo.u.registerVisualPluginMessage.minHeight				= 64;
-	playerMessageInfo.u.registerVisualPluginMessage.maxWidth				= 32767;
-	playerMessageInfo.u.registerVisualPluginMessage.maxHeight				= 32767;
-	playerMessageInfo.u.registerVisualPluginMessage.minFullScreenBitDepth	= 0;
-	playerMessageInfo.u.registerVisualPluginMessage.maxFullScreenBitDepth	= 0;
-	playerMessageInfo.u.registerVisualPluginMessage.windowAlignmentInBytes	= 0;
-	
-	status = PlayerRegisterVisualPlugin(messageInfo->u.initMessage.appCookie,messageInfo->u.initMessage.appProc,&playerMessageInfo);
+    /* some initialization left over from spectrograph */
+    /*
+     playerMessageInfo.u.registerVisualPluginMessage.options	= kVisualWantsIdleMessages 
+     | kVisualWantsConfigure 
+     | kVisualProvidesUnicodeName;
+     */
+    /*
 	startuSec(&gLineTimeStamp);
 	startuSec(&gFrameTimeStamp);
 	gnLPU = SG_MAXCHUNK;
-	
-	return status;
-	
+    */
+	/* * * * * * * */
 }
-#endif // 0 SpectroGraph
-
-
