@@ -355,13 +355,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			status = DeactivateVisual( visualPluginData );
 			break;
 		}
-            
 
-            
-            
-            
-#if 1 // ivan - copied from new code. both these are roughly analogous to the
-            // old kVisualPluginSetWindowMessage
         /*
             Sent when iTunes is moving the destination view to a new parent window (e.g. to/from fullscreen).
         */
@@ -380,31 +374,6 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			status = ResizeVisual( visualPluginData );
 			break;
 		}
-
-
-#else // ivan - old SpectroGraph code
-        /*
-             Sent when iTunes needs to change the port or rectangle of the currently
-             displayed visual.
-        */
-		case kVisualPluginSetWindowMessage:
-        {
-			visualPluginData->destOptions = messageInfo->u.setWindowMessage.options;
-            
-			status = ChangeVisualPort(	visualPluginData,
-                                    #if TARGET_OS_WIN32
-                                      messageInfo->u.showWindowMessage.window,
-                                    #endif
-                                    #if TARGET_OS_MAC
-                                      messageInfo->u.showWindowMessage.port,
-                                    #endif
-                                      &messageInfo->u.setWindowMessage.drawRect);
-            
-			if (status == noErr)
-				RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
-			break;
-        }
-#endif // ivan - old SpectroGraph code
             
         /*
              It's time for the plugin to draw a new frame.
@@ -422,7 +391,6 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			break;
 		}
 
-#if 1 // ivan - copied from new code.
         /*
              Sent for the visual plugin to update its internal animation state.
              Plugins are allowed to draw at this time but it is more efficient if they
@@ -430,7 +398,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
              their own subview.  The pulse message can be sent faster than the system
              will allow drawing to support spectral analysis-type plugins but drawing
              will be limited to the system refresh rate.
-             */
+         */
 		case kVisualPluginPulseMessage:
 		{
 			PulseVisual( visualPluginData,
@@ -441,29 +409,11 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			InvalidateVisual( visualPluginData );
 			break;
 		}
-#else // ivan - old SpectroGraph code
+
         /*
-             Sent in response to an update event.  The visual plugin should update
-             into its remembered port.  This will only be sent if the plugin has been
-             previously given a ShowWindow message.
-        */	
-		case kVisualPluginUpdateMessage:
-			RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
-			break;
-#endif // ivan - old SpectroGraph code
-
-
-            
-            
-            
-            
-            
-            
-            /*
              Sent when the player starts.
-             */
+        */
 		case kVisualPluginPlayMessage:
-#if 1 // ivan - new example code
 		{
 			visualPluginData->playing = true;
 			
@@ -474,29 +424,14 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			InvalidateVisual( visualPluginData );
 			break;
 		}            
-#else // ivan - old SpectroGraph code
-			if (messageInfo->u.playMessage.trackInfo != nil)
-				visualPluginData->trackInfo = *messageInfo->u.playMessage.trackInfoUnicode;
-			else
-				MyMemClear(&visualPluginData->trackInfo,sizeof(visualPluginData->trackInfo));
             
-			if (messageInfo->u.playMessage.streamInfo != nil)
-				visualPluginData->streamInfo = *messageInfo->u.playMessage.streamInfoUnicode;
-			else
-				MyMemClear(&visualPluginData->streamInfo,sizeof(visualPluginData->streamInfo));
-            
-			visualPluginData->playing = true;
-			break;
-#endif // ivan - old SpectroGraph code
-            
-            /*
+        /*
              Sent when the player changes the current track information.  This
              is used when the information about a track changes,or when the CD
              moves onto the next track.  The visual plugin should update any displayed
              information about the currently playing song.
-             */
+         */
 		case kVisualPluginChangeTrackMessage:
-#if 1 // ivan - new example code
         {
 			UpdateTrackInfo( visualPluginData, messageInfo->u.changeTrackMessage.trackInfo, messageInfo->u.changeTrackMessage.streamInfo );
             
@@ -505,24 +440,10 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			InvalidateVisual( visualPluginData );
 			break;
 		}
-
-#else // ivan - old SpectroGraph code
-			if (messageInfo->u.changeTrackMessage.trackInfo != nil)
-				visualPluginData->trackInfo = *messageInfo->u.changeTrackMessage.trackInfoUnicode;
-			else
-				MyMemClear(&visualPluginData->trackInfo,sizeof(visualPluginData->trackInfo));
-            
-			if (messageInfo->u.changeTrackMessage.streamInfo != nil)
-				visualPluginData->streamInfo = *messageInfo->u.changeTrackMessage.streamInfoUnicode;
-			else
-				MyMemClear(&visualPluginData->streamInfo,sizeof(visualPluginData->streamInfo));
-			break;
-#endif // ivan - old SpectroGraph code
-            /*
+        /*
              Sent when the player stops.
-             */
+        */
 		case kVisualPluginStopMessage:
-#if 1 // ivan - new example code
         {
 			visualPluginData->playing = false;
 			
@@ -531,19 +452,10 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			InvalidateVisual( visualPluginData );
 			break;
 		}
-
-#else // ivan - old SpectroGraph code
-			visualPluginData->playing = false;
-			
-			ResetRenderData(visualPluginData);
             
-			RenderVisualPort(visualPluginData,visualPluginData->destPort,&visualPluginData->destRect,true);
-			break;
-#endif // ivan - old SpectroGraph code
-            
-            /*
+        /*
              Sent when the player changes position.
-             */
+        */
 		case kVisualPluginSetPositionMessage:
         {
             break;
