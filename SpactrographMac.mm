@@ -311,6 +311,34 @@ static void setupTextures( void )
 void DrawVisual( VisualPluginData * visualPluginData )
 //RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort,const Rect *destRect,Boolean onlyUpdate)
 {
+#if 0 // ivan- this for testing y0
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glDisable(GL_TEXTURE_2D);
+	glColor3f(1.0f, 0.85f, 0.35f);
+	
+    glBegin(GL_TRIANGLES);
+	{
+		glVertex3f( -1, 0.5, 0.0);
+		glVertex3f(  0.0,  .60, 0.0);
+		glVertex3f(  .10, -0.20 ,0.0);
+	}
+	glEnd();
+    
+    glFlush();
+
+    glEnable(GL_TEXTURE_2D);
+#endif
+    
+    /* ivan- what follows is pretty much copypaste from original SpectroGraph code.
+       ultimately, this should be:
+       - broken up into "state update" vs "draw state"
+       - drawn in a uniform way, using OpenGL transforms to govern horiz/vert.
+    */
+    
     // this shouldn't happen but let's be safe
 	if ( visualPluginData->destView == NULL )
 		return;
@@ -817,16 +845,53 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
 	return YES;
 }
 
+static BOOL m_glContextInitialized = NO;
+
+- (void)initGL
+{
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glFinish();
+    
+    setupTextures();
+
+    m_glContextInitialized = YES;
+}
+
+
 //-------------------------------------------------------------------------------------------------
 //	drawRect
 //-------------------------------------------------------------------------------------------------
 //
 -(void)drawRect:(NSRect)dirtyRect
 {
+    if (!m_glContextInitialized) {
+        [self initGL];
+    }
+    
 	if ( _visualPluginData != NULL )
 	{
 		DrawVisual( _visualPluginData );
 	}
+}
+
+- (void)reshape // scrolled, moved or resized
+{
+    NSRect rect;
+    [super reshape];
+    
+    rect = [self bounds];
+
+    glViewport(0, 0, rect.size.width, rect.size.height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    glOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 10.0);
+
+    glMatrixMode(GL_MODELVIEW);
+
+    [self setNeedsDisplay:YES];
 }
 
 #if 0 // ivan - from SpectroGraph. Originally part of the plugin handler
@@ -995,14 +1060,11 @@ break;
 #endif // ivan - SpectroGraph code
 
 
-/* ivan- i think this is needed for the spectrograph textures
-*/
 -(id)initWithFrame:(NSRect)frameRect
 {
-    NSLog(@"VisualView initWithFrame");
+    NSLog(@"[%@] VisualView initWithFrame", self);
     if (self = [super initWithFrame:frameRect]) {
-        [[self openGLContext] makeCurrentContext];
-        setupTextures();
+        gnLPU = SG_MAXCHUNK;
     }
     return self;
 }
