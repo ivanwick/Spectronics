@@ -79,6 +79,11 @@ extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *
 @interface VisualView : NSOpenGLView
 {
 	VisualPluginData *	_visualPluginData;
+    
+    /* the first time a drawFrame is requested from the view, it has to make sure its OpenGL
+       context is initialized.
+    */
+    BOOL m_glContextInitialized;
 }
 
 @property (nonatomic, assign) VisualPluginData * visualPluginData;
@@ -845,8 +850,6 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
 	return YES;
 }
 
-static BOOL m_glContextInitialized = NO;
-
 - (void)initGL
 {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1065,6 +1068,7 @@ break;
     NSLog(@"[%@] VisualView initWithFrame", self);
     if (self = [super initWithFrame:frameRect]) {
         gnLPU = SG_MAXCHUNK;
+        m_glContextInitialized = NO;
     }
     return self;
 }
