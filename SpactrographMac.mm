@@ -466,8 +466,6 @@ void DrawVisual( VisualPluginData * visualPluginData )
 	glFinish();
 	glFlush();
 	
-//	aglSwapBuffers(myContext);  //?????? ivan- update this for NSOpenGLView
-	
 	UInt32 nUSec = getuSec(gFrameTimeStamp);
 	// We try to maintain a framerate of about 60FPS. If it drops below that,
 	// we update fewer lines at once to produce a smoother display.
@@ -604,37 +602,6 @@ OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
 	return noErr;
 }
 
-#if 0// ivan - old SpectroGraph code copied from the main cpp
-// should eventually be in DeactivateVisual or whatever
-
-/*
- * Apple says:
- Sent when iTunes is no longer displayed.
- * I say:
- Sent when the _visualizer_ is no longer displayed.  In other words:
- when the user disables the visualizer, swtiches to another visualizer,
- closes the iTunes window, or minimizes iTunes to the Dock.
- */
-
-case kVisualPluginHideWindowMessage:
-{
-#ifdef SG_DEBUG
-    fprintf(stderr, "Hiding SpectroGraph\n");
-#endif
-    (void) ChangeVisualPort(visualPluginData,nil,nil);
-    
-    aglSetCurrentContext(NULL);
-    if( myContext != NULL ) {
-        aglSetDrawable(myContext, NULL);
-        aglDestroyContext(myContext);
-        myContext = NULL;
-    }
-    
-    MyMemClear(&visualPluginData->trackInfo,sizeof(visualPluginData->trackInfo));
-    MyMemClear(&visualPluginData->streamInfo,sizeof(visualPluginData->streamInfo));
-    break;
-}
-#endif
 
 //-------------------------------------------------------------------------------------------------
 //	ResizeVisual
@@ -648,69 +615,6 @@ OSStatus ResizeVisual( VisualPluginData * visualPluginData )
 
 	return noErr;
 }
-
-#if 0 // SpectroGraph
-// ChangeVisualPort from SpectroGraph
-//
-static OSStatus ChangeVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort, const Rect *destRect)
-{
-	OSStatus		status;
-    
-	status = noErr;
-    
-	visualPluginData->destPort = destPort;
-	if(destRect != nil) {
-		GLint bufferRect[4];
-		GLsizei viewportWidth, viewportHeight;
-		Rect portRect;
-		visualPluginData->destRect = *destRect;
-		
-#ifdef SG_DEBUG
-		if( destPort == NULL )
-			fprintf(stderr, "ChangeVisualPort: destPort==NULL even though destRect!=NULL, have a nice crash!\n" );
-#endif
-		
-		// TODO: add tests on results (GLboolean)
-		aglSetDrawable(myContext, destPort);
-		aglSetCurrentContext(myContext);
-		// By setting AGL_SWAP_INTERVAL to 1, the swapping of buffers is synchronized with monitor retraces.
-		GLint swapinterval = 0;
-		aglSetInteger(myContext, AGL_SWAP_INTERVAL, &swapinterval);	
-		
-		// Set the bufferRect, which seems to be AGL jargon for the viewport.
-		// The bufferRect must be specified as left, bottom, width, height.
-		// TODO: this is way more complex in windoze, check VisualGraphicsCore::getCanvasSurroundingRect
-		GetPortBounds(destPort, &portRect); // = canvasSurroundingRect (canvasRect = destRect)
-		bufferRect[0] = (GLint)destRect->left;
-		bufferRect[1] = (GLint)(portRect.bottom - portRect.top - destRect->bottom);
-		bufferRect[2] = (GLint)(destRect->right - destRect->left);
-		bufferRect[3] = (GLint)(destRect->bottom - destRect->top);
-		//fprintf(stderr, "ChangeVisualPort: portBounds=%d,%d,%d,%d\n", portRect.left, portRect.top, portRect.right, portRect.bottom ); // DEBUG
-		//fprintf(stderr, "ChangeVisualPort: bufferRect=%ld,%ld,%ld,%ld\n", bufferRect[0], bufferRect[1], bufferRect[2], bufferRect[3] ); // DEBUG
-		aglEnable(myContext, AGL_BUFFER_RECT);
-		aglSetInteger(myContext, AGL_BUFFER_RECT, bufferRect);
-		
-		// Notify the rendering context that the window geometry has changed
-		aglUpdateContext(myContext);
-		
-		// FIXME: some crap needs to be added for windoze if fullscreen. Check VisualGraphicsCore::setViewport
-		viewportWidth = destRect->right - destRect->left;
-		viewportHeight = destRect->bottom - destRect->top;
-		glViewport(0, 0, viewportWidth, viewportHeight);
-		
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		
-		glOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 10.0);
-		
-		glMatrixMode(GL_MODELVIEW);
-		
-		// TODO (cosmetic): if viewport is enlarged, erase new texture parts
-	}
-	
-	return status;
-}
-#endif
 
 
 //-------------------------------------------------------------------------------------------------
@@ -1181,7 +1085,6 @@ OSStatus iTunesPluginMainMachO( OSType message, PluginMessageInfo * messageInfo,
 #include "iTunesVisualAPI.h"
 
 #if TARGET_OS_MAC
-#include <AGL/agl.h>
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
 #include <OpenGL/glu.h>
@@ -1248,14 +1151,6 @@ struct VisualPluginData {
 };
 typedef struct VisualPluginData VisualPluginData;
 
-#if TARGET_OS_MAC
-static AGLContext myContext = NULL;
-// not sure if I'll need this, gives all kinds of info about monitor
-//static CGDirectDisplayID directDisplayId;
-#else
-// TODO! Windows stuff comes here
-#endif
-
 
 //########################################
 //	static ( local ) functions
@@ -1304,30 +1199,6 @@ static int checkGLError( const char *funcName )
 	return 1;
 }
 #endif
-
-
-//########################################
-// initOpenGL
-//########################################
-static void initOpenGL( void )
-{
-#if TARGET_OS_MAC
-	AGLPixelFormat fmt;
-	GLint attrib[] = {AGL_RGBA, AGL_RED_SIZE, 8, AGL_GREEN_SIZE, 8, AGL_BLUE_SIZE, 8, AGL_ALPHA_SIZE, 8, AGL_ACCELERATED, AGL_DOUBLEBUFFER, AGL_DEPTH_SIZE, 24, AGL_CLOSEST_POLICY, AGL_NONE};
-	
-	//directDisplayId = CGMainDisplayID();
-	fmt = aglChoosePixelFormat(NULL, 0, attrib);
-	// should test if fmt == NULL
-	// create AGL context
-	myContext = aglCreateContext(fmt, NULL);
-	// should test if myContext == NULL
-	aglDestroyPixelFormat(fmt);
-#else
-	// TODO: add stuff for Windows WGL
-#endif
-}	
-
-
 
 
 /*
