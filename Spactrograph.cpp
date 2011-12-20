@@ -441,6 +441,21 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			break;
 		}
         /*
+             Artwork for the currently playing song is being delivered per a previous request.
+             
+             Note that NULL for messageInfo->u.coverArtMessage.coverArt means the currently playing song has no artwork.
+        */
+        case kVisualPluginCoverArtMessage:
+        {
+            UpdateArtwork(  visualPluginData,
+                          messageInfo->u.coverArtMessage.coverArt,
+                          messageInfo->u.coverArtMessage.coverArtSize,
+                          messageInfo->u.coverArtMessage.coverArtFormat );
+            
+            InvalidateVisual( visualPluginData );
+            break;
+        }            
+        /*
              Sent when the player stops.
         */
 		case kVisualPluginStopMessage:
