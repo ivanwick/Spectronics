@@ -10,6 +10,12 @@
 
 @implementation SettingsController
 
+@synthesize preferences;
+@synthesize invertColors = _invertColors;
+@synthesize color = _color;
+@synthesize bandBias = _bandBias;
+@synthesize scroll = _scroll;
+
 - (id)initWithWindow:(NSWindow *)window
 {
     self = [super initWithWindow:window];
@@ -28,8 +34,12 @@
     // Implement this method to handle any initialization after your window controller's window has been loaded from its nib file.
 }
 
+
+#if 0 // not modal.
 - (void)windowWillClose:(NSNotification *)notification
 {
     [[NSApplication sharedApplication] stopModal];
 }
+#endif
+
 @end

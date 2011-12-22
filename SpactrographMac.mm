@@ -47,25 +47,41 @@
 extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *inMessageInfoPtr, void *refCon ) __attribute__((visibility("default")));
 
 
-void InitPlugin( VisualPluginData * visualPluginData )
+void InitPlugin( VisualPluginData * vpd )
 {
     /* Load Settings */
-/*
- extern OSStatus	PlayerGetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataBufferSize, UInt32 *dataSize);
- extern OSStatus	PlayerSetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataSize);
-*/
-    visualPluginData->settingsController = [[SettingsController alloc]
-                                            initWithWindowNibName:@"ConfigurePanel"];
+    char databuffer[4096];
+    UInt32 retrsize = 0;
+    OSStatus result = noErr;
+    
+    vpd->settingsController = [[SettingsController alloc]
+                                initWithWindowNibName:@"ConfigurePanel"];
+
+    result = PlayerGetPluginData(vpd->appCookie, vpd->appProc, &databuffer, 4096, &retrsize);
+    
+    if (result == noErr && retrsize > 0) {
+        // We got some serialized data from iTunes, assume it's the prefs dictionary
+        
+        NSData *storedData = [NSData dataWithBytesNoCopy:databuffer length:retrsize];
+        NSError *serializeErr = nil;
+        NSPropertyListFormat plistFormat;
+        
+        vpd->settingsController.preferences =
+            [NSPropertyListSerialization propertyListWithData:storedData
+                                                      options:NSPropertyListMutableContainersAndLeaves
+                                                       format:&plistFormat
+                                                        error:&serializeErr];
+    }
 }
 
-void CleanupPlugin( VisualPluginData * visualPluginData )
+void CleanupPlugin( VisualPluginData * vpd )
 {
     /*
-    extern OSStatus	PlayerGetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataBufferSize, UInt32 *dataSize);
-    extern OSStatus	PlayerSetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataSize);
+    OSStatus result = noErr;
+    PlayerSetPluginData(vpd->appCookie, vpd->appProc, nil, 0);
     */
     
-    [visualPluginData->settingsController release];
+    [vpd->settingsController release];
 }
 
 void InternalizeRenderData( VisualPluginData * vpd )
@@ -83,7 +99,7 @@ void InternalizeRenderData( VisualPluginData * vpd )
 //	VisualView
 //-------------------------------------------------------------------------------------------------
 
-@interface VisualView : NSOpenGLView
+@interface VisualView : NSOpenGLView  //<NSKeyValueObserving> // Cannot find protocol declaration?
 {
 	VisualPluginData *	_visualPluginData;
     
@@ -116,18 +132,18 @@ void InternalizeRenderData( VisualPluginData * vpd )
 @property (nonatomic, assign) VisualPluginData * visualPluginData;
 
 // ivan- from SpectroGraph, moved from static vars to instance vars
-@property (readwrite, assign) BOOL gColorFlag;
-@property (readwrite, assign) BOOL gInvertFlag;
+@property (readwrite, assign) BOOL color;
+@property (readwrite, assign) BOOL invertColors;
 
-
--(void)drawRect:(NSRect)dirtyRect;
+- (void)drawRect:(NSRect)dirtyRect;
 - (BOOL)acceptsFirstResponder;
 - (BOOL)becomeFirstResponder;
 - (BOOL)resignFirstResponder;
--(void)keyDown:(NSEvent *)theEvent;
-
--(void) DrawVisual:(VisualPluginData *)visualPluginData;
+- (void)keyDown:(NSEvent *)theEvent;
 - (void)setupTextures;
+
+- (void)saveRenderData:(RenderVisualData*)rvd;
+- (void) DrawVisual:(VisualPluginData *)visualPluginData;
 
 @end
 
@@ -244,6 +260,7 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 
 	// NSView-based subview
 	visualPluginData->subview = [[VisualView alloc] initWithFrame:visualPluginData->destRect];
+    [visualPluginData->subview observeSettings:visualPluginData->settingsController];
 	if ( visualPluginData->subview != NULL )
 	{
 		[visualPluginData->subview setAutoresizingMask: (NSViewWidthSizable | NSViewHeightSizable)];
@@ -327,14 +344,9 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
     NSWindow* window = [visualPluginData->settingsController window];
     [window setDelegate:visualPluginData->settingsController];
     
-	// show modal dialog
-    [[NSApplication sharedApplication] runModalForWindow:window];
-
-	// update settings
-    NSLog(@"OK ITS SETTLED");
-
-    // invalidate    
-    InvalidateVisual( visualPluginData );
+	// show settings window
+    [window makeKeyAndOrderFront:nil];
+    
 	return noErr;
 }
 
@@ -346,8 +358,8 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
 
 @synthesize visualPluginData = _visualPluginData;
 
-@synthesize gInvertFlag;
-@synthesize gColorFlag;
+@synthesize invertColors;
+@synthesize color;
 
 //-------------------------------------------------------------------------------------------------
 //	isOpaque
@@ -588,8 +600,8 @@ break;
         m_glContextInitialized = NO;
         
         // ivan- SpectroGraph vars initializers
-        gColorFlag   = TRUE;
-        gInvertFlag  = FALSE;
+        self.color         = TRUE;
+        self.invertColors  = FALSE;
         gScrollFlag  = FALSE;
         gDirection   = 0;
         pnTextureID = NULL; // Array with IDs
@@ -608,9 +620,27 @@ break;
         nStored = 0;
         nTimePixels = 0;
         nNumTiles = 0;
-        
     }
     return self;
+}
+
+- (void) observeSettings:(SettingsController*)sc
+{
+    NSLog(@"observeSettings SettingsController:%@", sc);
+    [sc addObserver:self forKeyPath:@"invertColors"
+              options:NSKeyValueObservingOptionInitial context:nil];
+    
+    [sc addObserver:self forKeyPath:@"color"
+         options:NSKeyValueObservingOptionInitial context:nil];
+    
+    [sc setValue:[NSNumber numberWithBool:YES] forKey:@"invertColors"];
+}
+
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    NSLog(@"keyPath:%@ object:%@ change:%@", keyPath, object, change);
+    [self setValue:[object valueForKeyPath:keyPath] forKeyPath:keyPath];
 }
 
 
@@ -662,8 +692,8 @@ break;
 	for( i=0; i<SG_TEXWIDTH; i++ ) {
 		UInt8ToARGB( spectrumDataL[i], spectrumDataR[i],
                     &freshPixels[(nStored*SG_TEXWIDTH+i)*4],
-                    self.gInvertFlag,
-                    self.gColorFlag );
+                    self.invertColors,
+                    self.color );
     }
 	nStored++;
 	if( nStored < gnLPU )
