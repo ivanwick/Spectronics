@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2CDD005914A11F92006CA23D /* SettingsController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2CDD005714A11F92006CA23D /* SettingsController.h */; };
+		2CDD006114A1667B006CA23D /* SettingsController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CDD005814A11F92006CA23D /* SettingsController.m */; };
 		9542E97313D61AE600EE8D31 /* Spactrograph.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9542E97213D61AE600EE8D31 /* Spactrograph.cpp */; };
 		9542E97513D61AFE00EE8D31 /* iTunesAPI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9542E97413D61AFE00EE8D31 /* iTunesAPI.cpp */; };
 		DC13014513AB3AB40013DDA5 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC13014413AB3AB40013DDA5 /* OpenGL.framework */; };
@@ -26,6 +28,8 @@
 		01285C0300CC31B17F000001 /* iTunesVisualAPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iTunesVisualAPI.h; sourceTree = "<group>"; };
 		01285C0700CC38597F000001 /* SpactrographMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SpactrographMac.mm; sourceTree = "<group>"; };
 		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		2CDD005714A11F92006CA23D /* SettingsController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SettingsController.h; sourceTree = "<group>"; };
+		2CDD005814A11F92006CA23D /* SettingsController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SettingsController.m; sourceTree = "<group>"; };
 		9542E97213D61AE600EE8D31 /* Spactrograph.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Spactrograph.cpp; sourceTree = "<group>"; };
 		9542E97413D61AFE00EE8D31 /* iTunesAPI.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iTunesAPI.cpp; sourceTree = "<group>"; };
 		AF289ABC0CDFDCF200C8C0B4 /* Spactrograph-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Spactrograph-Info.plist"; sourceTree = "<group>"; };
@@ -97,6 +101,8 @@
 				9542E97213D61AE600EE8D31 /* Spactrograph.cpp */,
 				01285C0700CC38597F000001 /* SpactrographMac.mm */,
 				01285C0000CC31B17F000001 /* iTunesVisualAPI */,
+				2CDD005714A11F92006CA23D /* SettingsController.h */,
+				2CDD005814A11F92006CA23D /* SettingsController.m */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -119,6 +125,7 @@
 				DC2667950BD9410900B4ED68 /* iTunesAPI.h in Headers */,
 				DC2667960BD9410900B4ED68 /* iTunesVisualAPI.h in Headers */,
 				DC8CE75A13A34EB500963E07 /* Spactrograph.h in Headers */,
+				2CDD005914A11F92006CA23D /* SettingsController.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -189,6 +196,7 @@
 				DC26679C0BD9410900B4ED68 /* SpactrographMac.mm in Sources */,
 				9542E97313D61AE600EE8D31 /* Spactrograph.cpp in Sources */,
 				9542E97513D61AFE00EE8D31 /* iTunesAPI.cpp in Sources */,
+				2CDD006114A1667B006CA23D /* SettingsController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
