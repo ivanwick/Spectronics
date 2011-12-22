@@ -82,12 +82,13 @@ struct VisualPluginData;
 
 @class VisualView;
 @class GLVisualView;
+@class SettingsController;
 
 #endif
 
 #define kInfoTimeOutInSeconds		10							// draw info/artwork for N seconds when it changes or playback starts
-#define kPlayingPulseRateInHz		10							// when iTunes is playing, draw N times a second
-#define kStoppedPulseRateInHz		5							// when iTunes is not playing, draw N times a second
+#define kPlayingPulseRateInHz		60							// when iTunes is playing, draw N times a second
+#define kStoppedPulseRateInHz		0							// when iTunes is not playing, draw N times a second
 
 struct VisualPluginData
 {
@@ -101,6 +102,7 @@ struct VisualPluginData
 	VisualView*			subview;								// custom subview
 	#endif
 	NSImage *			currentArtwork;
+    SettingsController *settingsController;
 #else
 	HWND				destView;
 	RECT				destRect;
@@ -124,6 +126,9 @@ struct VisualPluginData
 
 	UInt8				minLevel[kVisualMaxDataChannels];		// 0-128
 	UInt8				maxLevel[kVisualMaxDataChannels];		// 0-128
+    
+    // ivan- originally was gBandFlag
+    Boolean biasNormFlag;
 };
 typedef struct VisualPluginData VisualPluginData;
 
@@ -148,5 +153,10 @@ void		PulseVisual( VisualPluginData * visualPluginData, UInt32 timeStampID, cons
 void		InvalidateVisual( VisualPluginData * visualPluginData );
 
 OSStatus	ConfigureVisual( VisualPluginData * visualPluginData );
+
+/* Platform-specific Init and Cleanup */
+void		InitPlugin( VisualPluginData * visualPluginData );
+void		CleanupPlugin( VisualPluginData * visualPluginData );
+void		InternalizeRenderData( VisualPluginData * visualPluginData );
 
 #endif

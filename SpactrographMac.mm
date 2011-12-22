@@ -1,4 +1,4 @@
-//
+
 // File:       iTunesPlugInMac.mm
 //
 // Abstract:   Visual plug-in for iTunes on MacOS
@@ -57,6 +57,7 @@
 #import <string.h>
 
 #import <sys/time.h>  // ivan- for all the SpectroGraph aux functions dealing with usec
+#import "SettingsController.h"
 
 //-------------------------------------------------------------------------------------------------
 //	constants, etc.
@@ -64,11 +65,56 @@
 
 #define kTVisualPluginName              CFSTR("iTunes Sample Visualizer")
 
+
+// Width = frequency resolution (should be 256)
+#define SG_TEXWIDTH  256
+// Larger textures make glCopyTexSubImage2D slower. 256*128 seems close to
+// the point where improvement becomes negligible.
+#define SG_TEXHEIGHT 128
+// Number of textures to allocate, must be such that SG_NTEXTURES*SG_TEXHEIGHT
+// is as wide as the widest possible display. 4096 pixels seems reasonable...
+#define SG_NTEXTURES 32
+// Maximum number of lines per update (must be power of 2). 4 seems the maximum,
+// above this the graph starts showing obvious bands.
+#define SG_MAXCHUNK  4
+
+
 //-------------------------------------------------------------------------------------------------
 //	exported function prototypes
 //-------------------------------------------------------------------------------------------------
 
 extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *inMessageInfoPtr, void *refCon ) __attribute__((visibility("default")));
+
+
+void InitPlugin( VisualPluginData * visualPluginData )
+{
+    /* Load Settings */
+/*
+ extern OSStatus	PlayerGetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataBufferSize, UInt32 *dataSize);
+ extern OSStatus	PlayerSetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataSize);
+*/
+    visualPluginData->settingsController = [[SettingsController alloc]
+                                            initWithWindowNibName:@"ConfigurePanel"];
+}
+
+void CleanupPlugin( VisualPluginData * visualPluginData )
+{
+    /*
+    extern OSStatus	PlayerGetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataBufferSize, UInt32 *dataSize);
+    extern OSStatus	PlayerSetPluginData(void *appCookie, ITAppProcPtr appProc, void *dataPtr, UInt32 dataSize);
+    */
+    
+    [visualPluginData->settingsController release];
+}
+
+void InternalizeRenderData( VisualPluginData * vpd )
+{
+    if (vpd == NULL) {
+        return;
+    }
+    
+    [(vpd->subview) saveRenderData:&(vpd->renderData)];
+}
 
 
 #if USE_SUBVIEW
@@ -84,9 +130,34 @@ extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *
        context is initialized.
     */
     BOOL m_glContextInitialized;
+    
+    // ivan- from SpectroGraph, moved from static vars to instance vars
+    GLuint *pnTextureID; // Array with IDs
+    UInt8 gnTexID;    // current texture index
+    UInt32 gnPosition; // position inside texture
+    UInt8 gnLPU;      // number of lines per update
+    
+    BOOL gScrollFlag;
+    /*typedefed enum */ int gDirection;
+    UInt32 gDelay;
+    struct timeval gLineTimeStamp;
+    struct timeval gFrameTimeStamp;
+#ifdef SG_DEBUG
+    struct timeval gFPSTimeStamp;
+#endif
+    
+    UInt8 freshPixels[SG_TEXWIDTH*4*SG_MAXCHUNK];
+    int nStored;
+    UInt16 nTimePixels;
+    int nNumTiles;
 }
 
 @property (nonatomic, assign) VisualPluginData * visualPluginData;
+
+// ivan- from SpectroGraph, moved from static vars to instance vars
+@property (readwrite, assign) BOOL gColorFlag;
+@property (readwrite, assign) BOOL gInvertFlag;
+
 
 -(void)drawRect:(NSRect)dirtyRect;
 - (BOOL)acceptsFirstResponder;
@@ -94,102 +165,13 @@ extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *
 - (BOOL)resignFirstResponder;
 -(void)keyDown:(NSEvent *)theEvent;
 
+-(void) DrawVisual:(VisualPluginData *)visualPluginData;
+- (void)setupTextures;
+
 @end
 
 #endif	// USE_SUBVIEW
 
-
-#if 0 // ivan- here's example code
-//-------------------------------------------------------------------------------------------------
-//	DrawVisual
-//-------------------------------------------------------------------------------------------------
-//
-void DrawVisual( VisualPluginData * visualPluginData )
-{
-	CGRect			drawRect;
-	CGPoint			where;
-
-	// this shouldn't happen but let's be safe
-	if ( visualPluginData->destView == NULL )
-		return;
-
-	drawRect = [visualPluginData->destView bounds];
-
-	// fill the whole view with black to start
-	[[NSColor blackColor] set];
-	NSRectFill( drawRect );
-
-	// pick a random location to draw our little square
-	double			randomX = (random() / 2147483647.0);		// [0, 1]
-	double			randomY = (random() / 2147483647.0);		// [0, 1]
-
-	where.x = (CGFloat)(randomX * drawRect.size.width);
-	where.y = (CGFloat)(randomY * drawRect.size.height);
-
-	if ( visualPluginData->playing )
-	{
-		// if playing, draw a square whose color is dictated by the current max levels
-		CGFloat		red		= (CGFloat)visualPluginData->maxLevel[1] / 256.0;
-		CGFloat		green	= (CGFloat)visualPluginData->maxLevel[1] / 256.0;
-		CGFloat		blue	= (CGFloat)visualPluginData->maxLevel[0] / 256.0;
-
-		[[NSColor colorWithDeviceRed:red green:green blue:blue alpha:1] set];
-	}
-	else
-	{
-		// if idle, draw a partially transparent blue square
-		[[[NSColor blueColor] colorWithAlphaComponent:0.75] set];
-	}
-
-	drawRect = NSMakeRect( where.x, where.y, 100, 100 );
-
-	NSRectFill( drawRect );
-
-	// should we draw the info/artwork in the bottom-left corner?
-	time_t		theTime = time( NULL );
-
-	if ( theTime < visualPluginData->drawInfoTimeOut )
-	{
-		where = CGPointMake( 10, 10 );
-
-		// if we have a song title, draw it (prefer the stream title over the regular name if we have it)
-		NSString *				theString = NULL;
-
-		if ( visualPluginData->streamInfo.streamTitle[0] != 0 )
-			theString = [NSString stringWithCharacters:&visualPluginData->streamInfo.streamTitle[1] length:visualPluginData->streamInfo.streamTitle[0]];
-		else if ( visualPluginData->trackInfo.name[0] != 0 )
-			theString = [NSString stringWithCharacters:&visualPluginData->trackInfo.name[1] length:visualPluginData->trackInfo.name[0]];
-		
-		if ( theString != NULL )
-		{
-			NSDictionary *		attrs = [NSDictionary dictionaryWithObjectsAndKeys:[NSColor whiteColor], NSForegroundColorAttributeName, NULL];
-			
-			[theString drawAtPoint:where withAttributes:attrs];
-		}
-
-		// draw the artwork
-		if ( visualPluginData->currentArtwork != NULL )
-		{
-			where.y += 20;
-
-			[visualPluginData->currentArtwork drawAtPoint:where fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:0.75];
-		}
-	}
-}
-
-#else // SpectroGraph
-
-// Width = frequency resolution (should be 256)
-#define SG_TEXWIDTH  256
-// Larger textures make glCopyTexSubImage2D slower. 256*128 seems close to
-// the point where improvement becomes negligible.
-#define SG_TEXHEIGHT 128
-// Number of textures to allocate, must be such that SG_NTEXTURES*SG_TEXHEIGHT
-// is as wide as the widest possible display. 4096 pixels seems reasonable...
-#define SG_NTEXTURES 32
-// Maximum number of lines per update (must be power of 2). 4 seems the maximum,
-// above this the graph starts showing obvious bands.
-#define SG_MAXCHUNK  4
 
 
 #define SG_USLEEP		1000
@@ -202,8 +184,6 @@ void DrawVisual( VisualPluginData * visualPluginData )
 #define SG_MAXDELAY		1000000 // 1lps
 
 
-static UInt8 freshPixels[SG_TEXWIDTH*4*SG_MAXCHUNK];
-static int nStored = 0;
 #ifdef SG_DEBUG
 static unsigned int nFps = 0;
 #endif
@@ -216,28 +196,8 @@ static unsigned int nFps = 0;
 #endif
 
 
-//########################################
-//	local ( static ) globals
-//########################################
 
-static Boolean	gColorFlag   = TRUE;
-static Boolean	gInvertFlag  = FALSE;
-static Boolean	gBandFlag    = TRUE;
-static Boolean	gScrollFlag  = FALSE;
-static UInt8	gDirection   = 0;
-static GLuint	*pnTextureID = NULL; // Array with IDs
-static UInt8	gnTexID;    // current texture index
-static UInt32	gnPosition; // position inside texture
-static UInt8	gnLPU;      // number of lines per update
-
-static UInt32	gDelay = SG_NORMDELAY;
-static struct timeval	gLineTimeStamp = {0,0};
-static struct timeval	gFrameTimeStamp = {0,0};
-#ifdef SG_DEBUG
-static struct timeval	gFPSTimeStamp = {0,0};
-#endif
-
-static void UInt8ToARGB(UInt8 pValueL, UInt8 pValueR, UInt8 *pARGBPtr)
+static void UInt8ToARGB(UInt8 pValueL, UInt8 pValueR, UInt8 *pARGBPtr, BOOL gInvertFlag, BOOL gColorFlag)
 {
 	if(gInvertFlag) {
 		pValueL = 0xFF-pValueL;
@@ -271,226 +231,6 @@ static inline UInt32 getuSec( struct timeval tv )
 	return 1000000*result+(timeNow.tv_usec-tv.tv_usec);
 }
 
-//########################################
-// setupTextures
-//########################################
-static void setupTextures( void )
-{
-	unsigned int i;
-	unsigned char *blankTexture = (unsigned char*)malloc(SG_TEXWIDTH*SG_TEXHEIGHT*4); // ivan- TODO change to calloc
-	memset( blankTexture, 0, SG_TEXWIDTH*SG_TEXHEIGHT*4 ); // ivan- TODO then you don't need to manually clear y0
-	if(pnTextureID)
-		free(pnTextureID);
-	// Strictly spoken, we only need to alloc enough textures to cover the viewport,
-	// but this would make resizing complicated.
-	pnTextureID = (GLuint *)malloc(SG_NTEXTURES*sizeof(GLuint));   // ivan- TODO change to calloc
-	glEnable(GL_TEXTURE_2D);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glGenTextures(SG_NTEXTURES, pnTextureID);
-#ifdef SG_DEBUG
-	checkGLError("glGenTextures");
-#endif
-	for( i=0; i<SG_NTEXTURES; i++ ) {
-		glBindTexture(GL_TEXTURE_2D, pnTextureID[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		// Turn off texture repeating
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,    //target, LOD (for mipmaps), internalFormat
-		             SG_TEXWIDTH, SG_TEXHEIGHT,   //w, h
-		             0, GL_BGRA, ARGB_IMAGE_TYPE, //border, format, type
-		             blankTexture);               //data
-	}
-	free(blankTexture);
-	glEnable(GL_TEXTURE_2D);
-	gnPosition = 0;
-	gnTexID = 0;
-}
-
-
-//############################################
-//	RenderVisualPort, aka drawing happens here from SpectroGraph
-//############################################
-void DrawVisual( VisualPluginData * visualPluginData )
-//RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort,const Rect *destRect,Boolean onlyUpdate)
-{
-#if 0 // ivan- this for testing y0
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glDisable(GL_TEXTURE_2D);
-	glColor3f(1.0f, 0.85f, 0.35f);
-	
-    glBegin(GL_TRIANGLES);
-	{
-		glVertex3f( -1, 0.5, 0.0);
-		glVertex3f(  0.0,  .60, 0.0);
-		glVertex3f(  .10, -0.20 ,0.0);
-	}
-	glEnd();
-    
-    glFlush();
-
-    glEnable(GL_TEXTURE_2D);
-#endif
-    
-    /* ivan- what follows is pretty much copypaste from original SpectroGraph code.
-       ultimately, this should be:
-       - broken up into "state update" vs "draw state"
-       - drawn in a uniform way, using OpenGL transforms to govern horiz/vert.
-    */
-    
-    // this shouldn't happen but let's be safe
-	if ( visualPluginData->destView == NULL )
-		return;
-
-	int i;
-	UInt8 *spectrumDataL = visualPluginData->renderData.spectrumData[0],
-          *spectrumDataR = visualPluginData->renderData.spectrumData[1];
-	UInt16 nTimePixels;
-	
-	glClearColor( 0.0, 0.0, 0.0, 0.0 );
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-	// Update the texture and only draw if chunk is full, otherwise exit
-	for( i=0; i<SG_TEXWIDTH; i++ )
-		UInt8ToARGB( spectrumDataL[i], spectrumDataR[i], &freshPixels[(nStored*SG_TEXWIDTH+i)*4] );
-	nStored++;
-	if( nStored < gnLPU )
-		return;
-	nStored = 0;
-	
-	/* glTexSubImage2D is a huge bottleneck!
-	 * Updating larger chunks is slightly more efficient overall, but the incurred delay
-	 * quickly becomes so large that it causes an unacceptable gap in the data.
-	 * TODO: tune TEXHEIGHT for optimal speed
-	 * TODO 2: check if using glCopyTexSubImage2D is more efficient, we
-	 *         want to squeeze the absolute max performance out of this!!! */
-	glBindTexture( GL_TEXTURE_2D, pnTextureID[gnTexID] );
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, SG_TEXWIDTH);
-	glTexSubImage2D( GL_TEXTURE_2D, 0, 0, gnPosition, SG_TEXWIDTH,
-                    gnLPU, GL_BGRA, ARGB_IMAGE_TYPE, freshPixels );	
-	gnPosition = gnPosition+gnLPU;
-    
-	if(gDirection == 0)
-		nTimePixels = visualPluginData->destRect.size.width;
-	else
-		nTimePixels = visualPluginData->destRect.size.height;
-	int nNumTiles = (int)ceil((float)nTimePixels/SG_TEXHEIGHT);
-	if(gScrollFlag)
-		nNumTiles++;
-    
-	if( !gScrollFlag && gnTexID*SG_TEXHEIGHT+gnPosition >= nTimePixels ) {
-		gnTexID = 0;
-		gnPosition = 0;
-	}
-	else if( gnPosition >= SG_TEXHEIGHT ) {
-		gnPosition = 0;
-		gnTexID++;
-		if( gScrollFlag && gnTexID >= nNumTiles )
-			gnTexID = 0;
-	}
-    
-	float fTexWid = SG_TEXHEIGHT*2.0/nTimePixels;
-	if(!gScrollFlag) {
-		for( i=0; i<nNumTiles; i++ ) {
-			glBindTexture( GL_TEXTURE_2D, pnTextureID[i] );
-			glBegin(GL_QUADS);
-			if(gDirection == 0) { // Horizontal
-				float fLeft = -1.0f+i*fTexWid,
-                fRight = -1.0f+(i+1)*fTexWid;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( fLeft, -1.0f, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f( fLeft, 1.0f, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f( fRight, 1.0f, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( fRight, -1.0f, 0.0f);
-			}
-			else {
-				float fTop = 1.0f-i*fTexWid,
-                fBtm = 1.0f-(i+1)*fTexWid;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( -1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f(  1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f(  1.0f, fBtm, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( -1.0f, fBtm, 0.0f);		
-			}
-			glEnd();
-		}
-	}
-	else {
-		float fOffset = gnPosition*2.0/nTimePixels;
-		for( i=0; i<nNumTiles; i++ ) {
-			UInt8 nTexID = (gnTexID-i+nNumTiles)%nNumTiles;
-			glBindTexture( GL_TEXTURE_2D, pnTextureID[nTexID] );
-			glBegin(GL_QUADS);
-			if(gDirection == 0) { // Horizontal
-				float fLeft  = 1.0f-i*fTexWid-fOffset,
-                fRight = 1.0f+(1-i)*fTexWid-fOffset;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( fLeft, -1.0f, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f( fLeft, 1.0f, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f( fRight, 1.0f, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( fRight, -1.0f, 0.0f);
-			}
-			else { // Vertical
-				float fTop = -1.0f+i*fTexWid+fOffset,
-                fBtm = -1.0f+(i-1)*fTexWid+fOffset;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( -1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f(  1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f(  1.0f, fBtm, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( -1.0f, fBtm, 0.0f);		
-			}
-			glEnd();
-		}
-	}
-	glBindTexture( GL_TEXTURE_2D, 0 ); // unbind texture
-    
-	glFinish();
-	glFlush();
-	
-	UInt32 nUSec = getuSec(gFrameTimeStamp);
-	// We try to maintain a framerate of about 60FPS. If it drops below that,
-	// we update fewer lines at once to produce a smoother display.
-	if( gnLPU > 1 && nUSec > 16000 )
-		gnLPU /= 2;
-	// If the framerate is more than 90FPS, we update more lines at once,
-	// which allows to achieve an even higher lines-per-second rate.
-	// But, we must keep the update blocks aligned.
-	else if( gnLPU < SG_MAXCHUNK && nUSec < 11000 && (gnPosition % (gnLPU*2) == 0) )
-		gnLPU *= 2;
-	startuSec(&gFrameTimeStamp);
-	
-#ifdef SG_DEBUG
-	if( getuSec(gFPSTimeStamp) < 1000000 )
-		nFps++;
-	else {
-		fprintf(stderr, "SpectroGraph fps: %u, LPU: %u, delay: %lu; NT: %d\n", nFps, gnLPU, nUSec, nNumTiles );
-		startuSec(&gFPSTimeStamp);
-		nFps = 0;
-	}
-#endif
-}
-
-#endif // SpectroGraph
-
 
 //-------------------------------------------------------------------------------------------------
 //	UpdateArtwork
@@ -519,8 +259,6 @@ void UpdateArtwork( VisualPluginData * visualPluginData, CFDataRef coverArt, UIn
 //
 void InvalidateVisual( VisualPluginData * visualPluginData )
 {
-	(void) visualPluginData;
-
 #if USE_SUBVIEW
 	// when using a custom subview, we invalidate it so we get our own draw calls
 	[visualPluginData->subview setNeedsDisplay:YES];
@@ -623,118 +361,21 @@ OSStatus ResizeVisual( VisualPluginData * visualPluginData )
 //
 OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
 {
-	(void) visualPluginData;
-
-	// load nib
+	// Nib's already set up (see InitPlugin), so cause it to get the window out of it
+    // load nib
+    NSWindow* window = [visualPluginData->settingsController window];
+    [window setDelegate:visualPluginData->settingsController];
+    
 	// show modal dialog
+    [[NSApplication sharedApplication] runModalForWindow:window];
+
 	// update settings
-	// invalidate
+    NSLog(@"OK ITS SETTLED");
 
-	return noErr;
-
-#if 0 // ivan: this should call a platform-specific configure function, e.g. in SpactrographMac.mm
-    static EventTypeSpec controlEvent={kEventClassControl,kEventControlHit};
-    static const ControlID kColorSettingControlID ={'cbox',kColorSettingID};
-    static const ControlID kInvertSettingControlID={'cbox',kInvertSettingID};
-    static const ControlID kBandSettingControlID  ={'cbox',kBandSettingID};
-    static const ControlID kScrollSettingControlID={'cbox',kScrollSettingID};
-    static const ControlID kDirSettingControlID   ={'popm',kDirSettingID};
-    static const ControlID kSpeedSettingControlID ={'popm',kSpeedSettingID};
-    
-    static WindowRef settingsDialog;
-    static ControlRef color =NULL;
-    static ControlRef invert=NULL;
-    static ControlRef band  =NULL;
-    static ControlRef scroll=NULL;
-    static ControlRef dirm  =NULL;
-    static ControlRef speedm=NULL;
-    
-    IBNibRef 		nibRef;
-    //we have to find our bundle to load the nib inside of it
-    CFBundleRef iTunesPlugin;
-    
-    iTunesPlugin=CFBundleGetBundleWithIdentifier(CFSTR("be.dr-lex.SpectroGraph"));
-    if( iTunesPlugin == NULL ) {
-        fprintf( stderr, "SpectroGraph error: could not find bundle\n" );
-        SysBeep(2);
-    }
-    else {
-        CreateNibReferenceWithCFBundle(iTunesPlugin,CFSTR("SettingsDialog"), &nibRef);
-        
-        if( nibRef != nil ) {
-            CreateWindowFromNib(nibRef, CFSTR("PluginSettings"), &settingsDialog);
-            DisposeNibReference(nibRef);
-            
-            if(settingsDialog) {
-                InstallWindowEventHandler(settingsDialog,NewEventHandlerUPP(settingsControlHandler),
-                                          1,&controlEvent,0,NULL);
-                GetControlByID(settingsDialog,&kColorSettingControlID, &color);
-                GetControlByID(settingsDialog,&kInvertSettingControlID,&invert);
-                GetControlByID(settingsDialog,&kBandSettingControlID,  &band);
-                GetControlByID(settingsDialog,&kScrollSettingControlID,&scroll);
-                GetControlByID(settingsDialog,&kDirSettingControlID,   &dirm);
-                GetControlByID(settingsDialog,&kSpeedSettingControlID, &speedm);
-                
-                SetControlValue(color, gColorFlag);
-                SetControlValue(invert,gInvertFlag);
-                SetControlValue(band,  gBandFlag);
-                SetControlValue(scroll,gScrollFlag);
-                SetControlValue(dirm,  gDirection+1);
-                SetControlValue(speedm,delayToSpeed(gDelay));
-                ShowWindow(settingsDialog);
-            }
-        }
-    }
-#endif // ivan
-
-
-}
-
-#if 0 // SpectroGraph
-#if TARGET_OS_MAC
-/* 
- settingsControlHandler
- */
-pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEvent, void* userData)
-{
-	WindowRef wind=NULL;
-	ControlID controlID;
-	ControlRef control=NULL;
-	//get control hit by event
-	GetEventParameter(inEvent,kEventParamDirectObject,typeControlRef,NULL,sizeof(ControlRef),NULL,&control);
-	wind=GetControlOwner(control);
-	GetControlID(control,&controlID);
-	switch(controlID.id) {
-		case kColorSettingID:
-			gColorFlag = GetControlValue(control);
-			break;
-		case kInvertSettingID:
-			gInvertFlag = GetControlValue(control);
-			break;
-		case kBandSettingID:
-			gBandFlag = GetControlValue(control);
-			break;
-		case kScrollSettingID:
-			gScrollFlag = GetControlValue(control);
-			break;
-		case kDirSettingID:
-			gDirection = GetControlValue(control)-1;
-			break;
-		case kSpeedSettingID:
-		{
-			UInt32 speeds[5] = {0, SG_MINDELAY, SG_FASTDELAY, SG_NORMDELAY, SG_SLOWDELAY};
-			gDelay = speeds[GetControlValue(control)];
-		}
-			break;
-		case kOKSettingID:
-			HideWindow(wind);
-			break;
-	}
+    // invalidate    
+    InvalidateVisual( visualPluginData );
 	return noErr;
 }
-#endif
-#endif // SpectroGraph
-
 
 #pragma mark -
 
@@ -743,6 +384,9 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
 @implementation VisualView
 
 @synthesize visualPluginData = _visualPluginData;
+
+@synthesize gInvertFlag;
+@synthesize gColorFlag;
 
 //-------------------------------------------------------------------------------------------------
 //	isOpaque
@@ -760,7 +404,7 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glFinish();
     
-    setupTextures();
+    [self setupTextures];
 
     m_glContextInitialized = YES;
 }
@@ -778,7 +422,7 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
     
 	if ( _visualPluginData != NULL )
 	{
-		DrawVisual( _visualPluginData );
+        [(_visualPluginData->subview) DrawVisual:_visualPluginData];
 	}
 }
 
@@ -789,6 +433,15 @@ pascal OSStatus settingsControlHandler(EventHandlerCallRef inRef,EventRef inEven
     
     rect = [self bounds];
 
+    
+    nTimePixels = (gDirection == 0) ? 
+        rect.size.width :
+        rect.size.height;
+    nNumTiles = (int)ceil((float)nTimePixels/SG_TEXHEIGHT);
+	if(gScrollFlag)
+		nNumTiles++;
+    
+    
     glViewport(0, 0, rect.size.width, rect.size.height);
 
     glMatrixMode(GL_PROJECTION);
@@ -971,11 +624,275 @@ break;
 {
     NSLog(@"[%@] VisualView initWithFrame", self);
     if (self = [super initWithFrame:frameRect]) {
-        gnLPU = SG_MAXCHUNK;
         m_glContextInitialized = NO;
+        
+        // ivan- SpectroGraph vars initializers
+        gColorFlag   = TRUE;
+        gInvertFlag  = FALSE;
+        gScrollFlag  = FALSE;
+        gDirection   = 0;
+        pnTextureID = NULL; // Array with IDs
+        gnTexID = 0;    // current texture index
+        gnPosition = 0; // position inside texture
+        gnLPU = SG_MAXCHUNK;      // number of lines per update
+        
+        gDelay = SG_NORMDELAY;
+        gLineTimeStamp = (struct timeval){0,0};
+        gFrameTimeStamp = (struct timeval){0,0};
+#ifdef SG_DEBUG
+        gFPSTimeStamp = {0,0};
+#endif
+
+        // freshPixels[SG_TEXWIDTH*4*SG_MAXCHUNK]; // init not important.
+        nStored = 0;
+        nTimePixels = 0;
+        nNumTiles = 0;
+        
     }
     return self;
 }
+
+
+//########################################
+// setupTextures
+//########################################
+- (void) setupTextures
+{
+	unsigned int i;
+	unsigned char *blankTexture = (unsigned char*)malloc(SG_TEXWIDTH*SG_TEXHEIGHT*4); // ivan- TODO change to calloc
+	memset( blankTexture, 0, SG_TEXWIDTH*SG_TEXHEIGHT*4 ); // ivan- TODO then you don't need to manually clear y0
+	if(pnTextureID)
+		free(pnTextureID);
+	// Strictly spoken, we only need to alloc enough textures to cover the viewport,
+	// but this would make resizing complicated.
+	pnTextureID = (GLuint *)malloc(SG_NTEXTURES*sizeof(GLuint));   // ivan- TODO change to calloc
+	glEnable(GL_TEXTURE_2D);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glGenTextures(SG_NTEXTURES, pnTextureID);
+#ifdef SG_DEBUG
+	checkGLError("glGenTextures");
+#endif
+	for( i=0; i<SG_NTEXTURES; i++ ) {
+		glBindTexture(GL_TEXTURE_2D, pnTextureID[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		// Turn off texture repeating
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,    //target, LOD (for mipmaps), internalFormat
+		             SG_TEXWIDTH, SG_TEXHEIGHT,   //w, h
+		             0, GL_BGRA, ARGB_IMAGE_TYPE, //border, format, type
+		             blankTexture);               //data
+	}
+	free(blankTexture);
+	glEnable(GL_TEXTURE_2D);
+	gnPosition = 0;
+	gnTexID = 0;
+}
+
+
+- (void)saveRenderData:(RenderVisualData*)rvd
+{
+	UInt8 *spectrumDataL = rvd->spectrumData[0];
+    UInt8 *spectrumDataR = rvd->spectrumData[1];
+    int i;
+    // Update the texture and only draw if chunk is full, otherwise exit
+	for( i=0; i<SG_TEXWIDTH; i++ ) {
+		UInt8ToARGB( spectrumDataL[i], spectrumDataR[i],
+                    &freshPixels[(nStored*SG_TEXWIDTH+i)*4],
+                    self.gInvertFlag,
+                    self.gColorFlag );
+    }
+	nStored++;
+	if( nStored < gnLPU )
+		return;
+	nStored = 0;
+	
+	/* glTexSubImage2D is a huge bottleneck!
+	 * Updating larger chunks is slightly more efficient overall, but the incurred delay
+	 * quickly becomes so large that it causes an unacceptable gap in the data.
+	 * TODO: tune TEXHEIGHT for optimal speed
+	 * TODO 2: check if using glCopyTexSubImage2D is more efficient, we
+	 *         want to squeeze the absolute max performance out of this!!! */
+	glBindTexture( GL_TEXTURE_2D, pnTextureID[gnTexID] );
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, SG_TEXWIDTH);
+	glTexSubImage2D( GL_TEXTURE_2D, 0, 0, gnPosition, SG_TEXWIDTH,
+                    gnLPU, GL_BGRA, ARGB_IMAGE_TYPE, freshPixels );	
+	gnPosition = gnPosition+gnLPU;
+
+    
+	if( !gScrollFlag && gnTexID*SG_TEXHEIGHT+gnPosition >= nTimePixels ) {
+        // wrap around again
+		gnTexID = 0;
+		gnPosition = 0;
+	}
+	else if( gnPosition >= SG_TEXHEIGHT ) {
+		gnPosition = 0;
+		gnTexID++;
+		if( gScrollFlag && gnTexID >= nNumTiles )
+			gnTexID = 0;
+	}
+    
+//    NSLog(@"gnTexID: %d gnPosition: %d", gnTexID, gnPosition);
+}
+
+
+-(void) DrawVisual:(VisualPluginData *)visualPluginData
+//RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort,const Rect *destRect,Boolean onlyUpdate)
+{    
+    /* ivan- what follows is pretty much copypaste from original SpectroGraph code.
+     ultimately, this should be:
+     - broken up into "state update" vs "draw state"
+     - drawn in a uniform way, using OpenGL transforms to govern horiz/vert.
+     */
+    
+    // this shouldn't happen but let's be safe
+	if ( visualPluginData->destView == NULL )
+		return;
+    
+	int i;
+	
+	glClearColor( 0.0, 0.0, 0.0, 0.0 );
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+    // probably move this into [reshape]
+	float fTexWid = SG_TEXHEIGHT*2.0/nTimePixels; // width of a texture in OpenGL world-coordinates
+	if(!gScrollFlag) {
+		for( i=0; i<nNumTiles; i++ ) {
+			glBindTexture( GL_TEXTURE_2D, pnTextureID[i] );
+			glBegin(GL_QUADS);
+			if(gDirection == 0) { // Horizontal
+				float fLeft = -1.0f+i*fTexWid;
+                float fRight = -1.0f+(i+1)*fTexWid;
+                
+                //NSLog(@"\tDrawing texture %d at {%f %f %f %f}",
+                //      i, fLeft, fRight, -1.0f, 1.0f);
+				glTexCoord2f(0.0f, 0.0f);
+				glVertex3f( fLeft, -1.0f, 0.0f);
+				glTexCoord2f(1.0f, 0.0f);
+				glVertex3f( fLeft, 1.0f, 0.0f);
+				glTexCoord2f(1.0f, 1.0f);
+				glVertex3f( fRight, 1.0f, 0.0f);
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex3f( fRight, -1.0f, 0.0f);
+			}
+			else {
+				float fTop = 1.0f-i*fTexWid,
+                fBtm = 1.0f-(i+1)*fTexWid;
+				glTexCoord2f(0.0f, 0.0f);
+				glVertex3f( -1.0f, fTop, 0.0f);
+				glTexCoord2f(1.0f, 0.0f);
+				glVertex3f(  1.0f, fTop, 0.0f);
+				glTexCoord2f(1.0f, 1.0f);
+				glVertex3f(  1.0f, fBtm, 0.0f);
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex3f( -1.0f, fBtm, 0.0f);		
+			}
+			glEnd();
+		}
+	}
+	else {
+		float fOffset = gnPosition*2.0/nTimePixels;
+		for( i=0; i<nNumTiles; i++ ) {
+			UInt8 nTexID = (gnTexID-i+nNumTiles)%nNumTiles;
+			glBindTexture( GL_TEXTURE_2D, pnTextureID[nTexID] );
+			glBegin(GL_QUADS);
+			if(gDirection == 0) { // Horizontal
+				float fLeft  = 1.0f-i*fTexWid-fOffset,
+                fRight = 1.0f+(1-i)*fTexWid-fOffset;
+				glTexCoord2f(0.0f, 0.0f);
+				glVertex3f( fLeft, -1.0f, 0.0f);
+				glTexCoord2f(1.0f, 0.0f);
+				glVertex3f( fLeft, 1.0f, 0.0f);
+				glTexCoord2f(1.0f, 1.0f);
+				glVertex3f( fRight, 1.0f, 0.0f);
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex3f( fRight, -1.0f, 0.0f);
+			}
+			else { // Vertical
+				float fTop = -1.0f+i*fTexWid+fOffset,
+                fBtm = -1.0f+(i-1)*fTexWid+fOffset;
+				glTexCoord2f(0.0f, 0.0f);
+				glVertex3f( -1.0f, fTop, 0.0f);
+				glTexCoord2f(1.0f, 0.0f);
+				glVertex3f(  1.0f, fTop, 0.0f);
+				glTexCoord2f(1.0f, 1.0f);
+				glVertex3f(  1.0f, fBtm, 0.0f);
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex3f( -1.0f, fBtm, 0.0f);		
+			}
+			glEnd();
+		}
+	}
+	glBindTexture( GL_TEXTURE_2D, 0 ); // unbind texture
+    
+	glFinish();
+	glFlush();
+	
+	UInt32 nUSec = getuSec(gFrameTimeStamp);
+	// We try to maintain a framerate of about 60FPS. If it drops below that,
+	// we update fewer lines at once to produce a smoother display.
+	if( gnLPU > 1 && nUSec > 16000 )
+		gnLPU /= 2;
+	// If the framerate is more than 90FPS, we update more lines at once,
+	// which allows to achieve an even higher lines-per-second rate.
+	// But, we must keep the update blocks aligned.
+	else if( gnLPU < SG_MAXCHUNK && nUSec < 11000 && (gnPosition % (gnLPU*2) == 0) )
+		gnLPU *= 2;
+	startuSec(&gFrameTimeStamp);
+	
+#ifdef SG_DEBUG
+	if( getuSec(gFPSTimeStamp) < 1000000 )
+		nFps++;
+	else {
+		fprintf(stderr, "SpectroGraph fps: %u, LPU: %u, delay: %lu; NT: %d\n", nFps, gnLPU, nUSec, nNumTiles );
+		startuSec(&gFPSTimeStamp);
+		nFps = 0;
+	}
+#endif
+    
+    
+#if 0
+/********************* ivan- moved artwork drawing code */
+    /* doesn't work as-is I think because it's an NSOpenGLView now and drawing is handled differently */
+
+    // should we draw the info/artwork in the bottom-left corner?
+	time_t		theTime = time( NULL );
+    CGPoint where;
+	if ( theTime < visualPluginData->drawInfoTimeOut )
+	{
+		where = CGPointMake( 10, 10 );
+        
+		// if we have a song title, draw it (prefer the stream title over the regular name if we have it)
+		NSString *				theString = NULL;
+        
+		if ( visualPluginData->streamInfo.streamTitle[0] != 0 )
+			theString = [NSString stringWithCharacters:&visualPluginData->streamInfo.streamTitle[1] length:visualPluginData->streamInfo.streamTitle[0]];
+		else if ( visualPluginData->trackInfo.name[0] != 0 )
+			theString = [NSString stringWithCharacters:&visualPluginData->trackInfo.name[1] length:visualPluginData->trackInfo.name[0]];
+		
+		if ( theString != NULL )
+		{
+			NSDictionary *		attrs = [NSDictionary dictionaryWithObjectsAndKeys:[NSColor whiteColor], NSForegroundColorAttributeName, NULL];
+			
+			[theString drawAtPoint:where withAttributes:attrs];
+		}
+        
+		// draw the artwork
+		if ( visualPluginData->currentArtwork != NULL )
+		{
+			where.y += 20;
+            
+			[visualPluginData->currentArtwork drawAtPoint:where fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:0.75];
+		}
+	}
+/********************* ivan- moved artwork drawing code */
+#endif    
+}
+
+
 
 
 @end

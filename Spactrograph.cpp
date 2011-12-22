@@ -92,23 +92,23 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
 	}
 
 	
-	/* Anti-banding: we assume there is no frequency content in the highest
+    /* (SpectroGraph: originally gBandFlag)
+	 * Anti-banding: we assume there is no frequency content in the highest
 	 * frequency possible (which should be the case for all normal music).
 	 * So if there is something there, we subtract it from all frequencies. */
-#if 0 // ivan- gBandFlag is supposed to be a param var, deal with this later.
-	if(gBandFlag) {
-		UInt8 *spectrumDataL = visualPluginDataPtr->renderData.spectrumData[0],
-        *spectrumDataR = visualPluginDataPtr->renderData.spectrumData[1];
-		SInt16 i;
-		SInt16 biasL = spectrumDataL[kVisualNumSpectrumEntries/2-1],
+    if (visualPluginData->biasNormFlag) {
+        UInt8 *spectrumDataL = visualPluginData->renderData.spectrumData[0],
+        *spectrumDataR = visualPluginData->renderData.spectrumData[1];
+        SInt16 i;
+        SInt16 biasL = spectrumDataL[kVisualNumSpectrumEntries/2-1],
         biasR = spectrumDataR[kVisualNumSpectrumEntries/2-1];
-		for( i=0; i<kVisualNumSpectrumEntries/2; i++ ) {
-			spectrumDataL[i] -= (spectrumDataL[i]-biasL > 0) ? biasL : spectrumDataL[i];
-			spectrumDataR[i] -= (spectrumDataR[i]-biasR > 0) ? biasR : spectrumDataR[i];
-		}
-	}		
-#endif
-    
+        for( i=0; i<kVisualNumSpectrumEntries/2; i++ ) {
+            spectrumDataL[i] -= (spectrumDataL[i]-biasL > 0) ? biasL : spectrumDataL[i];
+            spectrumDataR[i] -= (spectrumDataR[i]-biasR > 0) ? biasR : spectrumDataR[i];
+        }
+    }
+
+    InternalizeRenderData(visualPluginData);
 	/* This just finds the min & max values of the spectrum data, if
 	 * there's no need for this, you can drop this to save some CPU */
     /*	for (channel = 0;channel < renderData->numSpectrumChannels;channel++)
@@ -257,19 +257,22 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 			visualPluginData->appProc	= messageInfo->u.initMessage.appProc;
             
 			messageInfo->u.initMessage.refCon	= (void*) visualPluginData;
+            InitPlugin(visualPluginData);
+            
             #ifdef SG_DEBUG
                 fprintf(stderr, "SpectroGraph inited\n");
             #endif
 			break;
 		}	
-            /*
+        /*
              Sent when the visual plugin is unloaded
-             */		
+        */
 		case kVisualPluginCleanupMessage:
         {
             #ifdef SG_DEBUG
                 fprintf(stderr, "Unloading SpectroGraph...\n");
             #endif
+            CleanupPlugin(visualPluginData);
 			if (visualPluginData != NULL)
 				free(visualPluginData);
 			break;
