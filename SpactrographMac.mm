@@ -740,11 +740,8 @@ break;
 
 
 -(void) DrawVisual:(VisualPluginData *)visualPluginData
-//RenderVisualPort(VisualPluginData *visualPluginData, GRAPHICS_DEVICE destPort,const Rect *destRect,Boolean onlyUpdate)
 {    
-    /* ivan- what follows is pretty much copypaste from original SpectroGraph code.
-     ultimately, this should be:
-     - broken up into "state update" vs "draw state"
+    /* ivan- TODO:
      - drawn in a uniform way, using OpenGL transforms to govern horiz/vert.
      */
     
@@ -757,7 +754,7 @@ break;
 	glClearColor( 0.0, 0.0, 0.0, 0.0 );
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-    // probably move this into [reshape]
+    // ivan- TODO: probably move this into [reshape]
 	float fTexWid = SG_TEXHEIGHT*2.0/nTimePixels; // width of a texture in OpenGL world-coordinates
 	if(!gScrollFlag) {
 		for( i=0; i<nNumTiles; i++ ) {
@@ -766,9 +763,6 @@ break;
 			if(gDirection == 0) { // Horizontal
 				float fLeft = -1.0f+i*fTexWid;
                 float fRight = -1.0f+(i+1)*fTexWid;
-                
-                //NSLog(@"\tDrawing texture %d at {%f %f %f %f}",
-                //      i, fLeft, fRight, -1.0f, 1.0f);
 				glTexCoord2f(0.0f, 0.0f);
 				glVertex3f( fLeft, -1.0f, 0.0f);
 				glTexCoord2f(1.0f, 0.0f);
