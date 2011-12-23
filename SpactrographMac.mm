@@ -56,30 +56,49 @@ void InitPlugin( VisualPluginData * vpd )
     
     vpd->settingsController = [[SettingsController alloc]
                                 initWithWindowNibName:@"ConfigurePanel"];
+    vpd->settingsController.visualPluginData = vpd;
 
     result = PlayerGetPluginData(vpd->appCookie, vpd->appProc, &databuffer, 4096, &retrsize);
+    // TODO: add error checking
     
     if (result == noErr && retrsize > 0) {
         // We got some serialized data from iTunes, assume it's the prefs dictionary
         
-        NSData *storedData = [NSData dataWithBytesNoCopy:databuffer length:retrsize];
+        NSData *storedData = [NSData dataWithBytesNoCopy:databuffer length:retrsize freeWhenDone:NO];
+        NSDictionary *retrDict;
         NSError *serializeErr = nil;
         NSPropertyListFormat plistFormat;
         
-        vpd->settingsController.preferences =
+        retrDict =
             [NSPropertyListSerialization propertyListWithData:storedData
-                                                      options:NSPropertyListMutableContainersAndLeaves
+                                                      options:nil
                                                        format:&plistFormat
                                                         error:&serializeErr];
+
+        // TODO: add error checking
+
+        [vpd->settingsController setValuesForKeysWithDictionary:retrDict];
     }
 }
 
 void CleanupPlugin( VisualPluginData * vpd )
 {
-    /*
+    NSData *plistData;
+    NSError *serializeErr;
     OSStatus result = noErr;
-    PlayerSetPluginData(vpd->appCookie, vpd->appProc, nil, 0);
-    */
+
+    NSDictionary *savePrefs = [vpd->settingsController preferencesDictionary];
+
+    plistData = [NSPropertyListSerialization dataWithPropertyList:savePrefs
+                                                           format:NSPropertyListBinaryFormat_v1_0
+                                                          options:nil
+                                                            error:&serializeErr];
+
+    result = PlayerSetPluginData(vpd->appCookie, vpd->appProc,
+                                 (void*)[plistData bytes], // can't be const void *
+                                 [plistData length]);
+
+    // TODO: add error checking
     
     [vpd->settingsController release];
 }

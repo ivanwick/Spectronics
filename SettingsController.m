@@ -10,12 +10,29 @@
 
 @implementation SettingsController
 
-@synthesize preferences;
-@synthesize invertColors = _invertColors;
-@synthesize color = _color;
-@synthesize bandBias = _bandBias;
-@synthesize scroll = _scroll;
+@synthesize invertColors;
+@synthesize color;
+@synthesize scroll;
+@synthesize visualPluginData;
 
+- (void)setBandBias:(BOOL)bandBias { self.visualPluginData->biasNormFlag = bandBias; }
+- (BOOL)bandBias { return self.visualPluginData->biasNormFlag; }
+
+
+- (NSDictionary*) preferencesDictionary
+{
+    NSArray *keys;
+    keys = [NSArray arrayWithObjects:
+            @"invertColors",
+            @"color",
+            @"scroll",
+            @"bandBias",
+            nil];
+    
+    return [self dictionaryWithValuesForKeys:keys];
+}
+
+#if 0 // so far nothing needs to be inited here.
 - (id)initWithWindow:(NSWindow *)window
 {
     self = [super initWithWindow:window];
@@ -30,10 +47,9 @@
 {
     [super windowDidLoad];
     
-    NSLog(@"yeap");
     // Implement this method to handle any initialization after your window controller's window has been loaded from its nib file.
 }
-
+#endif
 
 #if 0 // not modal.
 - (void)windowWillClose:(NSNotification *)notification
