@@ -9,35 +9,35 @@
 /* Begin PBXBuildFile section */
 		2CDD005914A11F92006CA23D /* SettingsController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2CDD005714A11F92006CA23D /* SettingsController.h */; };
 		2CDD006114A1667B006CA23D /* SettingsController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CDD005814A11F92006CA23D /* SettingsController.m */; };
-		9542E97313D61AE600EE8D31 /* Spactrograph.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9542E97213D61AE600EE8D31 /* Spactrograph.cpp */; };
+		9542E97313D61AE600EE8D31 /* Spectronics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9542E97213D61AE600EE8D31 /* Spectronics.cpp */; };
 		9542E97513D61AFE00EE8D31 /* iTunesAPI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9542E97413D61AFE00EE8D31 /* iTunesAPI.cpp */; };
 		DC13014513AB3AB40013DDA5 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC13014413AB3AB40013DDA5 /* OpenGL.framework */; };
 		DC2667950BD9410900B4ED68 /* iTunesAPI.h in Headers */ = {isa = PBXBuildFile; fileRef = 01285C0200CC31B17F000001 /* iTunesAPI.h */; };
 		DC2667960BD9410900B4ED68 /* iTunesVisualAPI.h in Headers */ = {isa = PBXBuildFile; fileRef = 01285C0300CC31B17F000001 /* iTunesVisualAPI.h */; };
 		DC2667990BD9410900B4ED68 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C167DFE841241C02AAC07 /* InfoPlist.strings */; };
 		DC26679A0BD9410900B4ED68 /* ReadMe.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 0103924500CE94127F000001 /* ReadMe.rtf */; };
-		DC26679C0BD9410900B4ED68 /* SpactrographMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 01285C0700CC38597F000001 /* SpactrographMac.mm */; };
+		DC26679C0BD9410900B4ED68 /* SpectronicsMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 01285C0700CC38597F000001 /* SpectronicsMac.mm */; };
 		DC61BBEB13CBD871008AD92E /* ConfigurePanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = DC61BBE913CBD871008AD92E /* ConfigurePanel.xib */; };
 		DC8CE6DF13A31B4500963E07 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC8CE6DE13A31B4500963E07 /* Cocoa.framework */; };
-		DC8CE75A13A34EB500963E07 /* Spactrograph.h in Headers */ = {isa = PBXBuildFile; fileRef = DC8CE75913A34EB500963E07 /* Spactrograph.h */; };
+		DC8CE75A13A34EB500963E07 /* Spectronics.h in Headers */ = {isa = PBXBuildFile; fileRef = DC8CE75913A34EB500963E07 /* Spectronics.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0103924500CE94127F000001 /* ReadMe.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = ReadMe.rtf; sourceTree = "<group>"; };
 		01285C0200CC31B17F000001 /* iTunesAPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iTunesAPI.h; sourceTree = "<group>"; };
 		01285C0300CC31B17F000001 /* iTunesVisualAPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iTunesVisualAPI.h; sourceTree = "<group>"; };
-		01285C0700CC38597F000001 /* SpactrographMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SpactrographMac.mm; sourceTree = "<group>"; };
+		01285C0700CC38597F000001 /* SpectronicsMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SpectronicsMac.mm; sourceTree = "<group>"; };
 		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		2CDD005714A11F92006CA23D /* SettingsController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SettingsController.h; sourceTree = "<group>"; };
 		2CDD005814A11F92006CA23D /* SettingsController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SettingsController.m; sourceTree = "<group>"; };
-		9542E97213D61AE600EE8D31 /* Spactrograph.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Spactrograph.cpp; sourceTree = "<group>"; };
+		9542E97213D61AE600EE8D31 /* Spectronics.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Spectronics.cpp; sourceTree = "<group>"; };
 		9542E97413D61AFE00EE8D31 /* iTunesAPI.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iTunesAPI.cpp; sourceTree = "<group>"; };
-		AF289ABC0CDFDCF200C8C0B4 /* Spactrograph-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Spactrograph-Info.plist"; sourceTree = "<group>"; };
+		AF289ABC0CDFDCF200C8C0B4 /* Spectronics-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Spectronics-Info.plist"; sourceTree = "<group>"; };
 		DC13014413AB3AB40013DDA5 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
-		DC2667A60BD9410900B4ED68 /* Spactrograph.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Spactrograph.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC2667A60BD9410900B4ED68 /* Spectronics.Spectronics */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Spectronics.Spectronics; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC61BBEA13CBD871008AD92E /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/ConfigurePanel.xib; sourceTree = "<group>"; };
 		DC8CE6DE13A31B4500963E07 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
-		DC8CE75913A34EB500963E07 /* Spactrograph.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Spactrograph.h; sourceTree = "<group>"; };
+		DC8CE75913A34EB500963E07 /* Spectronics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Spectronics.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,7 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				DC61BBE913CBD871008AD92E /* ConfigurePanel.xib */,
-				AF289ABC0CDFDCF200C8C0B4 /* Spactrograph-Info.plist */,
+				AF289ABC0CDFDCF200C8C0B4 /* Spectronics-Info.plist */,
 				089C167DFE841241C02AAC07 /* InfoPlist.strings */,
 			);
 			name = Resources;
@@ -97,9 +97,9 @@
 		08FB77AFFE84173DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				DC8CE75913A34EB500963E07 /* Spactrograph.h */,
-				9542E97213D61AE600EE8D31 /* Spactrograph.cpp */,
-				01285C0700CC38597F000001 /* SpactrographMac.mm */,
+				DC8CE75913A34EB500963E07 /* Spectronics.h */,
+				9542E97213D61AE600EE8D31 /* Spectronics.cpp */,
+				01285C0700CC38597F000001 /* SpectronicsMac.mm */,
 				01285C0000CC31B17F000001 /* iTunesVisualAPI */,
 				2CDD005714A11F92006CA23D /* SettingsController.h */,
 				2CDD005814A11F92006CA23D /* SettingsController.m */,
@@ -110,7 +110,7 @@
 		19C28FB6FE9D52B211CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				DC2667A60BD9410900B4ED68 /* Spactrograph.bundle */,
+				DC2667A60BD9410900B4ED68 /* Spectronics.Spectronics */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -124,7 +124,7 @@
 			files = (
 				DC2667950BD9410900B4ED68 /* iTunesAPI.h in Headers */,
 				DC2667960BD9410900B4ED68 /* iTunesVisualAPI.h in Headers */,
-				DC8CE75A13A34EB500963E07 /* Spactrograph.h in Headers */,
+				DC8CE75A13A34EB500963E07 /* Spectronics.h in Headers */,
 				2CDD005914A11F92006CA23D /* SettingsController.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -132,9 +132,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		DC2667930BD9410900B4ED68 /* Spactrograph */ = {
+		DC2667930BD9410900B4ED68 /* Spectronics */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = DC2667A10BD9410900B4ED68 /* Build configuration list for PBXNativeTarget "Spactrograph" */;
+			buildConfigurationList = DC2667A10BD9410900B4ED68 /* Build configuration list for PBXNativeTarget "Spectronics" */;
 			buildPhases = (
 				DC2667940BD9410900B4ED68 /* Headers */,
 				DC2667970BD9410900B4ED68 /* Resources */,
@@ -145,10 +145,10 @@
 			);
 			dependencies = (
 			);
-			name = Spactrograph;
+			name = Spectronics;
 			productInstallPath = "/Users/guillerm/Library/iTunes/iTunes Plug-ins";
 			productName = iTunesPlugIn;
-			productReference = DC2667A60BD9410900B4ED68 /* Spactrograph.bundle */;
+			productReference = DC2667A60BD9410900B4ED68 /* Spectronics.Spectronics */;
 			productType = "com.apple.product-type.bundle";
 		};
 /* End PBXNativeTarget section */
@@ -156,7 +156,7 @@
 /* Begin PBXProject section */
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
-			buildConfigurationList = AF2F40450BD811FE009D75EB /* Build configuration list for PBXProject "Spactrograph" */;
+			buildConfigurationList = AF2F40450BD811FE009D75EB /* Build configuration list for PBXProject "Spectronics" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 1;
@@ -170,7 +170,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				DC2667930BD9410900B4ED68 /* Spactrograph */,
+				DC2667930BD9410900B4ED68 /* Spectronics */,
 			);
 		};
 /* End PBXProject section */
@@ -193,8 +193,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DC26679C0BD9410900B4ED68 /* SpactrographMac.mm in Sources */,
-				9542E97313D61AE600EE8D31 /* Spactrograph.cpp in Sources */,
+				DC26679C0BD9410900B4ED68 /* SpectronicsMac.mm in Sources */,
+				9542E97313D61AE600EE8D31 /* Spectronics.cpp in Sources */,
 				9542E97513D61AFE00EE8D31 /* iTunesAPI.cpp in Sources */,
 				2CDD006114A1667B006CA23D /* SettingsController.m in Sources */,
 			);
@@ -255,19 +255,19 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "Spactrograph-Info.plist";
+				INFOPLIST_FILE = "Spectronics-Info.plist";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = Spactrograph;
+				PRODUCT_NAME = Spectronics;
 				REZ_EXECUTABLE = YES;
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",
 					"-Wno-unknown-pragmas",
 				);
-				WRAPPER_EXTENSION = bundle;
+				WRAPPER_EXTENSION = Spectronics;
 				ZERO_LINK = YES;
 			};
 			name = Development;
@@ -282,19 +282,19 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "Spactrograph-Info.plist";
+				INFOPLIST_FILE = "Spectronics-Info.plist";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = Spactrograph;
+				PRODUCT_NAME = Spectronics;
 				REZ_EXECUTABLE = YES;
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",
 					"-Wno-unknown-pragmas",
 				);
-				WRAPPER_EXTENSION = bundle;
+				WRAPPER_EXTENSION = Spectronics;
 				ZERO_LINK = NO;
 			};
 			name = Deployment;
@@ -302,7 +302,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AF2F40450BD811FE009D75EB /* Build configuration list for PBXProject "Spactrograph" */ = {
+		AF2F40450BD811FE009D75EB /* Build configuration list for PBXProject "Spectronics" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AF2F40460BD811FE009D75EB /* Development */,
@@ -311,7 +311,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Deployment;
 		};
-		DC2667A10BD9410900B4ED68 /* Build configuration list for PBXNativeTarget "Spactrograph" */ = {
+		DC2667A10BD9410900B4ED68 /* Build configuration list for PBXNativeTarget "Spectronics" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DC2667A20BD9410900B4ED68 /* Development */,

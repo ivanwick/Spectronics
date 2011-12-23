@@ -1,6 +1,6 @@
 //
-//  SpactrographMac.mm
-//  Spactrograph
+//  SpectronicsMac.mm
+//  Spectronics
 //
 //  Created by Ivan Wick on 12/20/11.
 //  Copyright 2011 __MyCompanyName__. All rights reserved.
@@ -10,7 +10,7 @@
 //	includes
 //-------------------------------------------------------------------------------------------------
 
-#import "Spactrograph.h"
+#import "Spectronics.h"
 
 #import <AppKit/AppKit.h>
 #import <OpenGL/gl.h>
@@ -622,7 +622,6 @@ break;
 
 -(id)initWithFrame:(NSRect)frameRect
 {
-    NSLog(@"[%@] VisualView initWithFrame", self);
     if (self = [super initWithFrame:frameRect]) {
         m_glContextInitialized = NO;
         

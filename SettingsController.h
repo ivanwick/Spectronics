@@ -1,6 +1,6 @@
 //
 //  SettingsController.h
-//  Spactrograph
+//  Spectronics
 //
 //  Created by Ivan Wick on 12/20/11.
 //  Copyright 2011 __MyCompanyName__. All rights reserved.
@@ -9,7 +9,7 @@
 //  the VisualView object.
 
 #import <Cocoa/Cocoa.h>
-#import "Spactrograph.h"
+#import "Spectronics.h"
 
 @interface SettingsController : NSWindowController <NSWindowDelegate>
 

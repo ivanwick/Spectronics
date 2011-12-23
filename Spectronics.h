@@ -1,6 +1,6 @@
 //
-//  Spactrograph.h
-//  Spactrograph
+//  Spectronics.h
+//  Spectronics
 //
 //  Created by Ivan Wick on 12/20/11.
 //  Copyright 2011 __MyCompanyName__. All rights reserved.
@@ -38,11 +38,9 @@ struct VisualPluginData;
 #import <Cocoa/Cocoa.h>
 
 // "namespace" our ObjC classname to avoid load conflicts between multiple visualizer plugins
-#define VisualView		ComAppleExample_VisualView
-#define GLVisualView	ComAppleExample_GLVisualView
+#define VisualView		OrgIntfoundSpectronics_VisualView
 
 @class VisualView;
-@class GLVisualView;
 @class SettingsController;
 
 #endif

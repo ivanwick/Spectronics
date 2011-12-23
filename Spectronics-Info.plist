@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>Spactrograph</string>
+	<string>Spectronics</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Spactrograph Visualizer</string>
+	<string>Spectronics Visualizer</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.intfound.Spactrograph</string>
+	<string>org.intfound.Spectronics</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Spactrograph</string>
+	<string>Spectronics</string>
 	<key>CFBundlePackageType</key>
 	<string>hvpl</string>
 	<key>CFBundleSignature</key>

@@ -1,6 +1,6 @@
 //
-//  Spactrograph.cpp
-//  Spactrograph
+//  Spectroincs.cpp
+//  Spectronics
 //
 //  Created by Ivan Wick on 12/20/11.
 //  Copyright 2011 __MyCompanyName__. All rights reserved.
@@ -10,7 +10,7 @@
 //	includes
 //-------------------------------------------------------------------------------------------------
 
-#include "Spactrograph.h"
+#include "Spectronics.h"
 
 #include <string.h>
 
