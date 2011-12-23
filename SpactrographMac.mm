@@ -134,6 +134,9 @@ void InternalizeRenderData( VisualPluginData * vpd )
 // ivan- from SpectroGraph, moved from static vars to instance vars
 @property (readwrite, assign) BOOL color;
 @property (readwrite, assign) BOOL invertColors;
+@property (readwrite, assign) BOOL scroll;
+
+@property (readwrite, retain) SettingsController* settingsController;
 
 - (void)drawRect:(NSRect)dirtyRect;
 - (BOOL)acceptsFirstResponder;
@@ -260,7 +263,7 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 
 	// NSView-based subview
 	visualPluginData->subview = [[VisualView alloc] initWithFrame:visualPluginData->destRect];
-    [visualPluginData->subview observeSettings:visualPluginData->settingsController];
+    [visualPluginData->subview addObserversForSettings:visualPluginData->settingsController];
 	if ( visualPluginData->subview != NULL )
 	{
 		[visualPluginData->subview setAutoresizingMask: (NSViewWidthSizable | NSViewHeightSizable)];
@@ -309,6 +312,8 @@ OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
 	visualPluginData->subview = NULL;
 	[visualPluginData->currentArtwork release];
 	visualPluginData->currentArtwork = NULL;
+    
+    [visualPluginData->subview removeObserversForSettings];
 #endif
 
 	visualPluginData->destView			= NULL;
@@ -360,6 +365,9 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
 
 @synthesize invertColors;
 @synthesize color;
+@synthesize scroll;
+
+@synthesize settingsController;
 
 //-------------------------------------------------------------------------------------------------
 //	isOpaque
@@ -411,7 +419,7 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
         rect.size.width :
         rect.size.height;
     nNumTiles = (int)ceil((float)nTimePixels/SG_TEXHEIGHT);
-	if(gScrollFlag)
+	if(self.scroll)
 		nNumTiles++;
     
     
@@ -602,7 +610,7 @@ break;
         // ivan- SpectroGraph vars initializers
         self.color         = TRUE;
         self.invertColors  = FALSE;
-        gScrollFlag  = FALSE;
+        self.scroll        = FALSE;
         gDirection   = 0;
         pnTextureID = NULL; // Array with IDs
         gnTexID = 0;    // current texture index
@@ -624,22 +632,32 @@ break;
     return self;
 }
 
-- (void) observeSettings:(SettingsController*)sc
+- (void) addObserversForSettings:(SettingsController*)sc
 {
-    NSLog(@"observeSettings SettingsController:%@", sc);
     [sc addObserver:self forKeyPath:@"invertColors"
               options:NSKeyValueObservingOptionInitial context:nil];
     
     [sc addObserver:self forKeyPath:@"color"
-         options:NSKeyValueObservingOptionInitial context:nil];
-    
-    [sc setValue:[NSNumber numberWithBool:YES] forKey:@"invertColors"];
+            options:NSKeyValueObservingOptionInitial context:nil];
+
+    [sc addObserver:self forKeyPath:@"scroll"
+            options:NSKeyValueObservingOptionInitial context:nil];
+
+    // need to save this reference in order to properly remove ourself as an observer
+    self.settingsController = sc;
 }
 
+- (void) removeObserversForSettings
+{
+    if (self.settingsController) {
+        [self.settingsController removeObserver:self forKeyPath:@"invertColors"];
+        [self.settingsController removeObserver:self forKeyPath:@"color"];
+        [self.settingsController removeObserver:self forKeyPath:@"scroll"];
+    }
+}
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    NSLog(@"keyPath:%@ object:%@ change:%@", keyPath, object, change);
     [self setValue:[object valueForKeyPath:keyPath] forKeyPath:keyPath];
 }
 
@@ -714,7 +732,7 @@ break;
 	gnPosition = gnPosition+gnLPU;
 
     
-	if( !gScrollFlag && gnTexID*SG_TEXHEIGHT+gnPosition >= nTimePixels ) {
+	if( !self.scroll && gnTexID*SG_TEXHEIGHT+gnPosition >= nTimePixels ) {
         // wrap around again
 		gnTexID = 0;
 		gnPosition = 0;
@@ -722,7 +740,7 @@ break;
 	else if( gnPosition >= SG_TEXHEIGHT ) {
 		gnPosition = 0;
 		gnTexID++;
-		if( gScrollFlag && gnTexID >= nNumTiles )
+		if( self.scroll && gnTexID >= nNumTiles )
 			gnTexID = 0;
 	}
     
@@ -747,7 +765,7 @@ break;
 	
     // ivan- TODO: probably move this into [reshape]
 	float fTexWid = SG_TEXHEIGHT*2.0/nTimePixels; // width of a texture in OpenGL world-coordinates
-	if(!gScrollFlag) {
+	if(!self.scroll) {
 		for( i=0; i<nNumTiles; i++ ) {
 			glBindTexture( GL_TEXTURE_2D, pnTextureID[i] );
 			glBegin(GL_QUADS);
