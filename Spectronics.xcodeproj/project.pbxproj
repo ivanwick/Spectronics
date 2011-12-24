@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2C11418B14A55E63005B8C47 /* VisualView.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C11418914A55E63005B8C47 /* VisualView.h */; };
+		2C11418C14A55E63005B8C47 /* VisualView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C11418A14A55E63005B8C47 /* VisualView.m */; };
 		2CDD005914A11F92006CA23D /* SettingsController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2CDD005714A11F92006CA23D /* SettingsController.h */; };
 		2CDD006114A1667B006CA23D /* SettingsController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CDD005814A11F92006CA23D /* SettingsController.m */; };
 		9542E97313D61AE600EE8D31 /* Spectronics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9542E97213D61AE600EE8D31 /* Spectronics.cpp */; };
@@ -28,6 +30,8 @@
 		01285C0300CC31B17F000001 /* iTunesVisualAPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iTunesVisualAPI.h; sourceTree = "<group>"; };
 		01285C0700CC38597F000001 /* SpectronicsMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SpectronicsMac.mm; sourceTree = "<group>"; };
 		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		2C11418914A55E63005B8C47 /* VisualView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VisualView.h; sourceTree = "<group>"; };
+		2C11418A14A55E63005B8C47 /* VisualView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VisualView.m; sourceTree = "<group>"; };
 		2CDD005714A11F92006CA23D /* SettingsController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SettingsController.h; sourceTree = "<group>"; };
 		2CDD005814A11F92006CA23D /* SettingsController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SettingsController.m; sourceTree = "<group>"; };
 		9542E97213D61AE600EE8D31 /* Spectronics.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Spectronics.cpp; sourceTree = "<group>"; };
@@ -100,6 +104,8 @@
 				DC8CE75913A34EB500963E07 /* Spectronics.h */,
 				9542E97213D61AE600EE8D31 /* Spectronics.cpp */,
 				01285C0700CC38597F000001 /* SpectronicsMac.mm */,
+				2C11418914A55E63005B8C47 /* VisualView.h */,
+				2C11418A14A55E63005B8C47 /* VisualView.m */,
 				01285C0000CC31B17F000001 /* iTunesVisualAPI */,
 				2CDD005714A11F92006CA23D /* SettingsController.h */,
 				2CDD005814A11F92006CA23D /* SettingsController.m */,
@@ -126,6 +132,7 @@
 				DC2667960BD9410900B4ED68 /* iTunesVisualAPI.h in Headers */,
 				DC8CE75A13A34EB500963E07 /* Spectronics.h in Headers */,
 				2CDD005914A11F92006CA23D /* SettingsController.h in Headers */,
+				2C11418B14A55E63005B8C47 /* VisualView.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -197,6 +204,7 @@
 				9542E97313D61AE600EE8D31 /* Spectronics.cpp in Sources */,
 				9542E97513D61AFE00EE8D31 /* iTunesAPI.cpp in Sources */,
 				2CDD006114A1667B006CA23D /* SettingsController.m in Sources */,
+				2C11418C14A55E63005B8C47 /* VisualView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

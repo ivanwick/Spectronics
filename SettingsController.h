@@ -19,4 +19,6 @@
 @property (assign) BOOL scroll;
 @property (assign) VisualPluginData* visualPluginData;
 
+- (NSDictionary*) preferencesDictionary;
+
 @end
