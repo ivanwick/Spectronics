@@ -17,7 +17,11 @@
 @property (assign) BOOL color;
 @property (assign) BOOL bandBias;
 @property (assign) BOOL scroll;
+@property (assign) BOOL linear;
 @property (assign) VisualPluginData* visualPluginData;
+@property (readonly) NSArray* viewSettingsKeys;
+@property (readonly) NSArray* processSettingsKeys;
+
 
 - (NSDictionary*) preferencesDictionary;
 

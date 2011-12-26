@@ -13,7 +13,24 @@
 @synthesize invertColors;
 @synthesize color;
 @synthesize scroll;
+@synthesize linear;
 @synthesize visualPluginData;
+
+- (NSArray*)viewSettingsKeys
+{
+    return [NSArray arrayWithObjects:
+            @"invertColors",
+            @"color",
+            @"scroll",
+            @"linear",
+            nil];
+}
+- (NSArray*)processSettingsKeys
+{
+    return [NSArray arrayWithObjects:
+            @"bandBias",
+            nil];
+}
 
 - (void)setBandBias:(BOOL)bandBias { self.visualPluginData->biasNormFlag = bandBias; }
 - (BOOL)bandBias { return self.visualPluginData->biasNormFlag; }
@@ -21,15 +38,11 @@
 
 - (NSDictionary*) preferencesDictionary
 {
-    NSArray *keys;
-    keys = [NSArray arrayWithObjects:
-            @"invertColors",
-            @"color",
-            @"scroll",
-            @"bandBias",
-            nil];
+    NSMutableArray *saveKeys = [NSMutableArray arrayWithCapacity:10];
+    [saveKeys addObjectsFromArray:self.viewSettingsKeys];
+    [saveKeys addObjectsFromArray:self.processSettingsKeys];
     
-    return [self dictionaryWithValuesForKeys:keys];
+    return [self dictionaryWithValuesForKeys:saveKeys];
 }
 
 #if 0 // so far nothing needs to be inited here.

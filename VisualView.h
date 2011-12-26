@@ -60,6 +60,7 @@
 @property (readwrite, assign) BOOL color;
 @property (readwrite, assign) BOOL invertColors;
 @property (readwrite, assign) BOOL scroll;
+@property (readwrite, assign) BOOL linear;
 
 @property (readwrite, retain) SettingsController* settingsController;
 

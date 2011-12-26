@@ -82,6 +82,7 @@ static inline UInt32 getuSec( struct timeval tv )
 @synthesize invertColors;
 @synthesize color;
 @synthesize scroll;
+@synthesize linear;
 
 @synthesize settingsController;
 
@@ -236,6 +237,10 @@ case kVisualPluginRenderMessage:
         sc.bandBias = !sc.bandBias;
         return;
     }
+    else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"s"] ) {
+        sc.linear = !sc.linear;
+        return;
+    }
     // if the 'i' key is pressed, reset the info timeout so that we draw it again
     else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"i"] ) {
         // TODO
@@ -338,14 +343,10 @@ break;
 
 - (void) addObserversForSettings:(SettingsController*)sc
 {
-    [sc addObserver:self forKeyPath:@"invertColors"
-            options:NSKeyValueObservingOptionInitial context:nil];
-    
-    [sc addObserver:self forKeyPath:@"color"
-            options:NSKeyValueObservingOptionInitial context:nil];
-    
-    [sc addObserver:self forKeyPath:@"scroll"
-            options:NSKeyValueObservingOptionInitial context:nil];
+    for (NSString *key in sc.viewSettingsKeys) {
+        [sc addObserver:self forKeyPath:key
+                options:NSKeyValueObservingOptionInitial context:nil];
+    }
     
     // need to save this reference in order to properly remove ourself as an observer
     self.settingsController = sc;
@@ -353,10 +354,12 @@ break;
 
 - (void) removeObserversForSettings
 {
-    if (self.settingsController) {
-        [self.settingsController removeObserver:self forKeyPath:@"invertColors"];
-        [self.settingsController removeObserver:self forKeyPath:@"color"];
-        [self.settingsController removeObserver:self forKeyPath:@"scroll"];
+    if (self.settingsController == nil) {
+        return;
+    }
+    
+    for (NSString *key in settingsController.viewSettingsKeys) {
+        [self.settingsController removeObserver:self forKeyPath:key];
     }
 }
 
@@ -451,6 +454,59 @@ break;
     //    NSLog(@"gnTexID: %d gnPosition: %d", gnTexID, gnPosition);
 }
 
+-(void)linearPlotTexture:(int)texindex leftPos:(float)fLeft rightPos:(float)fRight
+{
+    glBindTexture( GL_TEXTURE_2D, pnTextureID[texindex] );
+    glBegin(GL_QUADS);
+
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f( fLeft, -1.0f, 0.0f);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f( fLeft, 1.0f, 0.0f);
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex3f( fRight, 1.0f, 0.0f);
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex3f( fRight, -1.0f, 0.0f);
+    glEnd();
+}
+
+-(void)logarithmicPlotTexture:(int)texindex leftPost:(float)fLeft rightPost:(float)fRight
+{
+    glBindTexture( GL_TEXTURE_2D, pnTextureID[texindex] );
+    glBegin(GL_QUADS);
+
+    // TODO
+    // Too much floating point arithmetic, this should be a lookup table.
+    // These coordinates calculations are all based on constants.
+    int j;
+    float texSeg = 1.0f / SG_TEXWIDTH;
+    float posSeg = 2.0f / SG_TEXWIDTH; // because it goes from -1 to +1
+    for (j = 0; j < SG_TEXWIDTH; j++) {
+        
+        int j_log = j+1;
+        float divisor = log(SG_TEXWIDTH+1);
+        float fBot = 2.0f*(logf((j_log  )) / divisor) - 1.0f; // *2.0f because it goes from -1 to +1
+        float fTop = 2.0f*(logf((j_log+1)) / divisor) - 1.0f;
+        
+        glTexCoord2f( (j  )*texSeg, 0.0f ); glVertex3f( fLeft,  fBot, 0.0f );  // bl
+        glTexCoord2f( (j+1)*texSeg, 0.0f ); glVertex3f( fLeft,  fTop, 0.0f );  // tl
+        glTexCoord2f( (j+1)*texSeg, 1.0f ); glVertex3f( fRight, fTop, 0.0f );  // tr
+        glTexCoord2f( (j  )*texSeg, 1.0f ); glVertex3f( fRight, fBot, 0.0f );  // br
+        
+    }
+    glEnd();
+}
+
+- (void)plotTexture:(int)texid leftPos:(float)fLeft rightPos:(float)fRight
+{
+    if (self.linear) {
+        [self linearPlotTexture:texid leftPos:fLeft rightPos:fRight];
+    }
+    else {
+        [self logarithmicPlotTexture:texid leftPost:fLeft rightPost:fRight];
+    }
+
+}
 
 -(void) DrawVisual:(VisualPluginData *)visualPluginData
 {    
@@ -463,75 +519,31 @@ break;
 		return;
     
 	int i;
+    
+    
 	
-	glClearColor( 0.0, 0.0, 0.0, 0.0 );
+	glClearColor( 1.0, 0.0, 0.0, 0.0 );///////////////////
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
     // ivan- TODO: probably move this into [reshape]
 	float fTexWid = SG_TEXHEIGHT*2.0/nTimePixels; // width of a texture in OpenGL world-coordinates
+
 	if(!self.scroll) {
 		for( i=0; i<nNumTiles; i++ ) {
-			glBindTexture( GL_TEXTURE_2D, pnTextureID[i] );
-			glBegin(GL_QUADS);
-			if(gDirection == 0) { // Horizontal
-				float fLeft = -1.0f+i*fTexWid;
-                float fRight = -1.0f+(i+1)*fTexWid;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( fLeft, -1.0f, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f( fLeft, 1.0f, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f( fRight, 1.0f, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( fRight, -1.0f, 0.0f);
-			}
-			else {
-				float fTop = 1.0f-i*fTexWid,
-                fBtm = 1.0f-(i+1)*fTexWid;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( -1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f(  1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f(  1.0f, fBtm, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( -1.0f, fBtm, 0.0f);		
-			}
-			glEnd();
+            float fLeft = -1.0f+i*fTexWid;
+            float fRight = -1.0f+(i+1)*fTexWid;
+            
+            [self plotTexture:i leftPos:fLeft rightPos:fRight];
 		}
 	}
 	else {
 		float fOffset = gnPosition*2.0/nTimePixels;
 		for( i=0; i<nNumTiles; i++ ) {
 			UInt8 nTexID = (gnTexID-i+nNumTiles)%nNumTiles;
-			glBindTexture( GL_TEXTURE_2D, pnTextureID[nTexID] );
-			glBegin(GL_QUADS);
-			if(gDirection == 0) { // Horizontal
-				float fLeft  = 1.0f-i*fTexWid-fOffset,
-                fRight = 1.0f+(1-i)*fTexWid-fOffset;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( fLeft, -1.0f, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f( fLeft, 1.0f, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f( fRight, 1.0f, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( fRight, -1.0f, 0.0f);
-			}
-			else { // Vertical
-				float fTop = -1.0f+i*fTexWid+fOffset,
-                fBtm = -1.0f+(i-1)*fTexWid+fOffset;
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex3f( -1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex3f(  1.0f, fTop, 0.0f);
-				glTexCoord2f(1.0f, 1.0f);
-				glVertex3f(  1.0f, fBtm, 0.0f);
-				glTexCoord2f(0.0f, 1.0f);
-				glVertex3f( -1.0f, fBtm, 0.0f);		
-			}
-			glEnd();
-		}
+            float fLeft  = 1.0f-i*fTexWid-fOffset;
+            float fRight = 1.0f+(1-i)*fTexWid-fOffset;
+            [self plotTexture:nTexID leftPos:fLeft rightPos:fRight];
+        }
 	}
 	glBindTexture( GL_TEXTURE_2D, 0 ); // unbind texture
     
