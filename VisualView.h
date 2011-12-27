@@ -72,10 +72,12 @@
 - (void)setupTextures;
 
 - (void)saveRenderData:(RenderVisualData*)rvd;
-- (void)DrawVisual:(VisualPluginData *)visualPluginData;
+- (void)DrawVisual;
 
 - (void)initGL;
 - (void)addObserversForSettings:(SettingsController*)sc;
 - (void)removeObserversForSettings;
+
+- (void)rewindDisplay;
 
 @end

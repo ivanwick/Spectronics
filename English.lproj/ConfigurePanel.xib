@@ -121,7 +121,7 @@
 						<object class="NSButton" id="696317205">
 							<reference key="NSNextResponder" ref="722800310"/>
 							<int key="NSvFlags">268</int>
-							<string key="NSFrame">{{18, 115}, {73, 18}}</string>
+							<string key="NSFrame">{{18, 115}, {76, 18}}</string>
 							<reference key="NSSuperview" ref="722800310"/>
 							<reference key="NSWindow"/>
 							<reference key="NSNextKeyView" ref="1059576849"/>
@@ -129,7 +129,7 @@
 							<object class="NSButtonCell" key="NSCell" id="167277720">
 								<int key="NSCellFlags">-2080244224</int>
 								<int key="NSCellFlags2">0</int>
-								<string key="NSContents">Scroll (l)</string>
+								<string key="NSContents">Scroll (s)</string>
 								<reference key="NSSupport" ref="633646933"/>
 								<reference key="NSControlView" ref="696317205"/>
 								<int key="NSButtonFlags">1211912703</int>
@@ -145,7 +145,7 @@
 						<object class="NSButton" id="1059576849">
 							<reference key="NSNextResponder" ref="722800310"/>
 							<int key="NSvFlags">268</int>
-							<string key="NSFrame">{{18, 95}, {116, 18}}</string>
+							<string key="NSFrame">{{18, 95}, {113, 18}}</string>
 							<reference key="NSSuperview" ref="722800310"/>
 							<reference key="NSWindow"/>
 							<reference key="NSNextKeyView" ref="120516810"/>
@@ -153,7 +153,7 @@
 							<object class="NSButtonCell" key="NSCell" id="476657759">
 								<int key="NSCellFlags">-2080244224</int>
 								<int key="NSCellFlags2">0</int>
-								<string key="NSContents">Linear Scale (s)</string>
+								<string key="NSContents">Linear Scale (l)</string>
 								<reference key="NSSupport" ref="633646933"/>
 								<reference key="NSControlView" ref="1059576849"/>
 								<int key="NSButtonFlags">1211912703</int>

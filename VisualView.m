@@ -120,7 +120,7 @@ static inline UInt32 getuSec( struct timeval tv )
     
 	if ( _visualPluginData != NULL )
 	{
-        [(_visualPluginData->subview) DrawVisual:_visualPluginData];
+        [self DrawVisual];
 	}
 }
 
@@ -224,20 +224,19 @@ case kVisualPluginRenderMessage:
         sc.invertColors = !sc.invertColors;
         return;
     }
-    else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"l"] ) {
+    else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"s"] ) {
         sc.scroll = !sc.scroll;
         return;
     }
     else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"r"] ) {
-        /* rewindDisplay(); */
-        NSLog(@"rewindDisplay");
+        [self rewindDisplay];
         return;
     }
     else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"b"] ) {
         sc.bandBias = !sc.bandBias;
         return;
     }
-    else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"s"] ) {
+    else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"l"] ) {
         sc.linear = !sc.linear;
         return;
     }
@@ -508,14 +507,14 @@ break;
 
 }
 
--(void) DrawVisual:(VisualPluginData *)visualPluginData
+-(void) DrawVisual
 {    
     /* ivan- TODO:
      - drawn in a uniform way, using OpenGL transforms to govern horiz/vert.
      */
     
     // this shouldn't happen but let's be safe
-	if ( visualPluginData->destView == NULL )
+	if ( self.visualPluginData->destView == NULL )
 		return;
     
 	int i;
@@ -612,21 +611,15 @@ break;
 }
 
 
-@end
-
-
-#pragma mark -
-
-#if 0 // orig from SpectroGraph, will incorporate later
 /*
  Restart drawing (only in scan mode)
  */
-void rewindDisplay()
+-(void) rewindDisplay
 {
-	if(!gScrollFlag) {
+	if(!self.scroll) {
 		gnPosition = 0;
 		gnTexID = 0;
 	}
 }
 
-#endif
+@end
