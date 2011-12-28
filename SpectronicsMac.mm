@@ -194,11 +194,11 @@ OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
 #if USE_SUBVIEW
 	[visualPluginData->subview removeFromSuperview];
 	[visualPluginData->subview autorelease];
-	visualPluginData->subview = NULL;
+    [visualPluginData->subview removeObserversForSettings];
+	
+    visualPluginData->subview = NULL;
 	[visualPluginData->currentArtwork release];
 	visualPluginData->currentArtwork = NULL;
-    
-    [visualPluginData->subview removeObserversForSettings];
 #endif
 
 	visualPluginData->destView			= NULL;
