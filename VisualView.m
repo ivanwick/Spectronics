@@ -340,6 +340,13 @@ break;
     return self;
 }
 
+- (void) dealloc
+{
+    [settingsController release];
+    
+    [super dealloc];
+}
+
 - (void) addObserversForSettings:(SettingsController*)sc
 {
     for (NSString *key in sc.viewSettingsKeys) {
