@@ -81,9 +81,16 @@ static inline UInt32 getuSec( struct timeval tv )
 
 @synthesize invertColors;
 @synthesize color;
-@synthesize scroll;
 @synthesize linear;
 @synthesize settingsController;
+
+@dynamic scroll;
+- (BOOL) scroll { return _scroll; }
+- (void) setScroll:(BOOL)newScroll
+{
+    _scroll = newScroll;
+    _needsReshape = YES;
+}
 
 @dynamic orientation; // YES:vert NO:horiz
 - (BOOL) orientation { return _orientation; }
@@ -552,7 +559,7 @@ break;
 }
 
 -(void) DrawVisual
-{    
+{
     /* ivan- TODO:
      - drawn in a uniform way, using OpenGL transforms to govern horiz/vert.
      */

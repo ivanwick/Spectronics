@@ -39,7 +39,7 @@
     UInt32 gnPosition; // position inside texture
     UInt8 gnLPU;      // number of lines per update
     
-    BOOL gScrollFlag;
+    BOOL _scroll;
     BOOL _orientation;
     UInt32 gDelay;
     struct timeval gLineTimeStamp;
