@@ -40,7 +40,7 @@
     UInt8 gnLPU;      // number of lines per update
     
     BOOL gScrollFlag;
-    /*typedefed enum */ int gDirection;
+    BOOL _orientation;
     UInt32 gDelay;
     struct timeval gLineTimeStamp;
     struct timeval gFrameTimeStamp;
@@ -52,6 +52,7 @@
     int nStored;
     UInt16 nTimePixels;
     int nNumTiles;
+    BOOL _needsReshape;
 }
 
 @property (nonatomic, assign) VisualPluginData * visualPluginData;
@@ -61,6 +62,7 @@
 @property (readwrite, assign) BOOL invertColors;
 @property (readwrite, assign) BOOL scroll;
 @property (readwrite, assign) BOOL linear;
+@property (readwrite, assign) BOOL orientation; // YES:vert NO:horiz
 
 @property (readwrite, retain) SettingsController* settingsController;
 

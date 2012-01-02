@@ -83,8 +83,15 @@ static inline UInt32 getuSec( struct timeval tv )
 @synthesize color;
 @synthesize scroll;
 @synthesize linear;
-
 @synthesize settingsController;
+
+@dynamic orientation; // YES:vert NO:horiz
+- (BOOL) orientation { return _orientation; }
+- (void) setOrientation:(BOOL)newOrientation
+{
+    _orientation = newOrientation;
+    _needsReshape = YES;
+}
 
 //-------------------------------------------------------------------------------------------------
 //	isOpaque
@@ -118,27 +125,56 @@ static inline UInt32 getuSec( struct timeval tv )
         [self initGL];
     }
     
+    if (_needsReshape) {
+        [self glReshape];
+        _needsReshape = NO;
+    }
+    
 	if ( _visualPluginData != NULL )
 	{
         [self DrawVisual];
 	}
 }
 
+- (CGFloat)minorAxis
+{
+    return (self.orientation) ? 
+    [self bounds].size.width :
+    [self bounds].size.height;
+}
+
+- (CGFloat)majorAxis
+{
+    return (self.orientation) ? 
+    [self bounds].size.height :
+    [self bounds].size.width;    
+}
+
+- (void) transformView
+{
+    if (self.orientation) { // if plotting vertically
+        glMatrixMode(GL_PROJECTION);
+        glRotatef(-90.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
 - (void)reshape // scrolled, moved or resized
 {
-    NSRect rect;
     [super reshape];
+    _needsReshape = YES;  // defer processing of the reshape to the next drawRect call
+    [self setNeedsDisplay:YES];
+}
+
+-(void) glReshape{
+    NSRect rect;
     
     rect = [self bounds];
     
     
-    nTimePixels = (gDirection == 0) ? 
-        rect.size.width :
-        rect.size.height;
+    nTimePixels = [self majorAxis];
     nNumTiles = (int)ceil((float)nTimePixels/SG_TEXHEIGHT);
 	if(self.scroll)
 		nNumTiles++;
-    
     
     glViewport(0, 0, rect.size.width, rect.size.height);
     
@@ -146,10 +182,7 @@ static inline UInt32 getuSec( struct timeval tv )
     glLoadIdentity();
     
     glOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 10.0);
-    
-    glMatrixMode(GL_MODELVIEW);
-    
-    [self setNeedsDisplay:YES];
+    [self transformView];
 }
 
 #if 0 // ivan - from SpectroGraph. Originally part of the plugin handler
@@ -240,6 +273,10 @@ case kVisualPluginRenderMessage:
         sc.linear = !sc.linear;
         return;
     }
+    else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"h"] ) {
+        sc.orientation = !sc.orientation;
+        return;
+    }
     // if the 'i' key is pressed, reset the info timeout so that we draw it again
     else if ( [[theEvent charactersIgnoringModifiers] isEqualTo:@"i"] ) {
         // TODO
@@ -319,7 +356,7 @@ break;
         self.color         = TRUE;
         self.invertColors  = FALSE;
         self.scroll        = FALSE;
-        gDirection   = 0;
+        _orientation   = 0;
         pnTextureID = NULL; // Array with IDs
         gnTexID = 0;    // current texture index
         gnPosition = 0; // position inside texture

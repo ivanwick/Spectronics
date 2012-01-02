@@ -14,6 +14,7 @@
 @synthesize color;
 @synthesize scroll;
 @synthesize linear;
+@synthesize orientation;
 @synthesize visualPluginData;
 
 - (NSArray*)viewSettingsKeys
@@ -23,6 +24,7 @@
             @"color",
             @"scroll",
             @"linear",
+            @"orientation",
             nil];
 }
 - (NSArray*)processSettingsKeys
